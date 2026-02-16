@@ -28,12 +28,13 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const router = useRouter();
 
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      window.location.href = "/auth/logout";
-    } else {
-      router.push("/auth/v1/login");
+  const handleLogout = async () => {
+    try {
+      await fetch("/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Error during logout", err);
     }
+    router.push("/auth/v1/login");
   };
 
   return (

@@ -26,49 +26,66 @@ async function getVisibleProductsForCustomer(
     (p) => (p.category ?? "").toLowerCase() !== "private",
   );
 
-  // For each product, check customer-specific override first, then tier
+  if (publicProducts.length === 0) {
+    return [];
+  }
+
+  const productIds = publicProducts.map((p) => p.id);
+
+  // 1) All customer-specific permissions for this customer + these products
+  const { data: customerPerms, error: custPermError } = await serverSupabase
+    .from("product_customer_permissions")
+    .select("product_id, can_view")
+    .in("product_id", productIds)
+    .eq("customer_id", customerId);
+
+  if (custPermError) {
+    console.error("Error fetching customer permissions", custPermError);
+  }
+
+  const customerPermMap = new Map<string, boolean>();
+  for (const row of customerPerms ?? []) {
+    customerPermMap.set(row.product_id as string, !!row.can_view);
+  }
+
+  // 2) All tier permissions for this tier + these products
+  const tierPermMap = new Map<string, boolean>();
+
+  if (customerTier) {
+    const { data: tierPerms, error: tierPermError } = await serverSupabase
+      .from("product_tier_permissions")
+      .select("product_id, can_view")
+      .in("product_id", productIds)
+      .eq("customer_tier", customerTier);
+
+    if (tierPermError) {
+      console.error("Error fetching tier permissions", tierPermError);
+    }
+
+    for (const row of tierPerms ?? []) {
+      tierPermMap.set(row.product_id as string, !!row.can_view);
+    }
+  }
+
   const visible: typeof publicProducts = [];
 
   for (const p of publicProducts) {
-    // 1) customer override
-    const { data: custPerm, error: custErr } = await serverSupabase
-      .from("product_customer_permissions")
-      .select("can_view")
-      .eq("product_id", p.id)
-      .eq("customer_id", customerId)
-      .maybeSingle();
+    const customerOverride = customerPermMap.has(p.id)
+      ? customerPermMap.get(p.id)
+      : undefined;
 
-    if (custErr) {
-      console.error("Error checking customer permission", custErr);
-    }
-
-    if (custPerm) {
-      if (custPerm.can_view) {
+    if (customerOverride !== undefined) {
+      if (customerOverride) {
         visible.push(p);
       }
       continue; // skip tier if specific override exists
     }
 
-    // 2) tier rule
-    if (customerTier) {
-      const { data: tierPerm, error: tierErr } = await serverSupabase
-        .from("product_tier_permissions")
-        .select("can_view")
-        .eq("product_id", p.id)
-        .eq("customer_tier", customerTier)
-        .maybeSingle();
-
-      if (tierErr) {
-        console.error("Error checking tier permission", tierErr);
-      }
-
-      if (tierPerm && tierPerm.can_view) {
-        visible.push(p);
-        continue;
-      }
+    const tierCanView = tierPermMap.get(p.id);
+    if (tierCanView) {
+      visible.push(p);
     }
-
-    // 3) default: hidden (do nothing)
+    // default: hidden
   }
 
   return visible;

@@ -6,7 +6,10 @@ import { StorefrontProductsTable } from "./products-table";
 
 export const dynamic = "force-dynamic";
 
-async function getVisibleProductsForCustomer(customerId: string, customerTier: string | null) {
+async function getVisibleProductsForCustomer(
+  customerId: string,
+  customerTier: string | null,
+): Promise<any[]> {
   // Fetch all products
   const { data: products, error } = await serverSupabase
     .from("products")
@@ -15,7 +18,7 @@ async function getVisibleProductsForCustomer(customerId: string, customerTier: s
 
   if (error || !products) {
     console.error("Error fetching products for storefront", error);
-    return [] as typeof products;
+    return [];
   }
 
   // Customers should never see products in the 'Private' category
@@ -87,7 +90,7 @@ async function getProductsForProfile() {
 
     if (error) {
       console.error("Error fetching products for storefront (staff)", error);
-      return [] as typeof data;
+      return [];
     }
 
     return data ?? [];

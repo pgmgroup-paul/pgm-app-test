@@ -2,20 +2,29 @@ import {
   Banknote,
   Calendar,
   ChartBar,
+  CirclePile,
+  DollarSign,
   Fingerprint,
   Forklift,
   Gauge,
   GraduationCap,
+  Images,
   Kanban,
   LayoutDashboard,
+  ListCheck,
+  ListChecks,
   Lock,
   type LucideIcon,
   Mail,
   MessageSquare,
+  Package,
   ReceiptText,
+  ShieldUser,
   ShoppingBag,
   SquareArrowUpRight,
   Users,
+  CirclePlus,
+  BookOpenCheck,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -91,49 +100,29 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 2,
-    label: "Pages",
+    label: "Management",
     items: [
       {
-        title: "Email",
-        url: "/dashboard/coming-soon",
-        icon: Mail,
-        comingSoon: true,
+        title: "Catalog",
+        url: "/products",
+        icon: Images,
+        subItems: [
+          { title: "Add Product", url: "/products/new", icon: CirclePlus },
+          { title: "Update Product", url: "/products/update", icon: BookOpenCheck },
+        ],
       },
       {
-        title: "Chat",
-        url: "/dashboard/coming-soon",
-        icon: MessageSquare,
-        comingSoon: true,
+        title: "Inventory",
+        url: "/inventory",
+        icon: CirclePile,
+        subItems: [
+          { title: "Check Inventory", url: "/inventory", icon: ListChecks },
+        ],
       },
       {
-        title: "Calendar",
-        url: "/dashboard/coming-soon",
-        icon: Calendar,
-        comingSoon: true,
-      },
-      {
-        title: "Kanban",
-        url: "/dashboard/coming-soon",
-        icon: Kanban,
-        comingSoon: true,
-      },
-      {
-        title: "Invoice",
-        url: "/dashboard/coming-soon",
-        icon: ReceiptText,
-        comingSoon: true,
-      },
-      {
-        title: "Users",
-        url: "/dashboard/coming-soon",
+        title: "Profiles",
+        url: "/profiles",
         icon: Users,
-        comingSoon: true,
-      },
-      {
-        title: "Roles",
-        url: "/dashboard/coming-soon",
-        icon: Lock,
-        comingSoon: true,
       },
       {
         title: "Authentication",
@@ -150,6 +139,28 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 3,
+    label: "Store Front",
+    items: [
+      {
+        title: "Products",
+        url: "/storefront/products",
+        icon: ShoppingBag,
+        // subItems: [] can be added later
+      },
+      {
+        title: "Orders",
+        url: "/storefront/orders",
+        icon: ReceiptText,
+      },
+      {
+        title: "Quotations",
+        url: "/storefront/quotations",
+        icon: DollarSign,
+      },
+    ],
+  },
+  {
+    id: 4,
     label: "Misc",
     items: [
       {

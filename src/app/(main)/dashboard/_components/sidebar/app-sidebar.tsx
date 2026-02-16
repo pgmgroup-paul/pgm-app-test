@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { CircleHelp, ClipboardList, Command, Database, File, Search, Settings } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -15,7 +17,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
-import { rootUser } from "@/data/users";
 import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
@@ -59,6 +60,12 @@ const _data = {
   ],
 };
 
+type SidebarUser = {
+  name: string;
+  email: string;
+  avatar: string;
+};
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
     useShallow((s) => ({
@@ -67,6 +74,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isSynced: s.isSynced,
     })),
   );
+
+  const [sidebarUser, setSidebarUser] = useState<SidebarUser | null>(null);
+  const path = usePathname();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.profile) {
+          const email = data.profile.email ?? "";
+          const name = data.profile.full_name ?? email;
+          setSidebarUser({
+            name,
+            email,
+            avatar: "",
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSidebarUser(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
 
   const variant = isSynced ? sidebarVariant : props.variant;
   const collapsible = isSynced ? sidebarCollapsible : props.collapsible;
@@ -91,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={rootUser} />
+        {sidebarUser && <NavUser user={sidebarUser} />}
       </SidebarFooter>
     </Sidebar>
   );

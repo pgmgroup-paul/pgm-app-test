@@ -4,6 +4,11 @@ import { serverSupabase } from "@/lib/serverSupabase";
 
 import { addPurchaseOrderLine, deletePurchaseOrderLine } from "../../po-actions";
 
+async function addPurchaseOrderLineFormAction(formData: FormData): Promise<void> {
+  "use server";
+  await addPurchaseOrderLine(formData);
+}
+
 interface PoWithLines {
   id: string;
   po_number: string;
@@ -214,7 +219,7 @@ export default async function EditPurchaseOrderPage({
             </button>
           </form>
         </div>
-        <form action={addPurchaseOrderLine} className="space-y-2">
+        <form action={addPurchaseOrderLineFormAction} className="space-y-2">
           <input type="hidden" name="purchase_order_id" value={po.id} />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">

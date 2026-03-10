@@ -95,7 +95,10 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
     return { ok: false, error: "Could not resolve location for deduction" };
   }
 
-  const warehouseName = (locRow.warehouses?.name as string) || "";
+  const warehouseName =
+    (Array.isArray(locRow.warehouses)
+      ? ((locRow.warehouses[0]?.name as string) || "")
+      : ((locRow as any).warehouses?.name as string) || "") || "";
   const locationCode = (locRow.code as string) || "";
 
   if (!warehouseName || !locationCode) {

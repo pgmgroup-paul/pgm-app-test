@@ -2,6 +2,11 @@ import { serverSupabase } from "@/lib/serverSupabase";
 
 import { saveShipmentEvents } from "./actions";
 
+async function saveShipmentEventsFormAction(formData: FormData): Promise<void> {
+  "use server";
+  await saveShipmentEvents(formData);
+}
+
 interface ContainerShipmentEventsSectionProps {
   shipmentContainerId: string;
 }
@@ -22,7 +27,10 @@ export default async function ContainerShipmentEventsSection({
   const events = (data || null) as any | null;
 
   return (
-    <form action={saveShipmentEvents} className="space-y-3 rounded-md border px-3 py-3 text-xs">
+    <form
+      action={saveShipmentEventsFormAction}
+      className="space-y-3 rounded-md border px-3 py-3 text-xs"
+    >
       <input type="hidden" name="shipment_container_id" value={shipmentContainerId} />
 
       {/* ISF block */}

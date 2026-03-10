@@ -12,6 +12,7 @@ export interface DropshipSourcesState {
   skuVar?: string | null;
   containers?: {
     id: string;
+    container_number: string;
   }[];
   shipments?: {
     id: string;

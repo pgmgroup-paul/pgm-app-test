@@ -8,9 +8,6 @@ export async function GET() {
     return NextResponse.json({ profile }, { status: 200 });
   } catch (err: any) {
     console.error("Error in /api/me", err);
-    return NextResponse.json(
-      { profile: null, error: err?.message ?? "Unexpected error in /api/me" },
-      { status: 500 },
-    );
+    return NextResponse.json({ profile: null, error: err?.message ?? "Unexpected error in /api/me" }, { status: 500 });
   }
 }

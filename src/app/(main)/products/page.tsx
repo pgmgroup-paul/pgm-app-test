@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { supabase } from "@/lib/supabaseClient";
+
 import { AdminProductsTable } from "./products-table";
 
 export const metadata: Metadata = {
@@ -28,9 +29,9 @@ export default async function ProductsPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
+      <h1 className="font-semibold text-2xl tracking-tight">Products</h1>
       {products.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No products found.</p>
+        <p className="text-muted-foreground text-sm">No products found.</p>
       ) : (
         <AdminProductsTable products={products as any} />
       )}

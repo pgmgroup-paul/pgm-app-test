@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.SUPABASE_URL!;

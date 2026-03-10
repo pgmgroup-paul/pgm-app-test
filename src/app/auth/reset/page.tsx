@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -42,10 +43,8 @@ export default function ResetPasswordPage() {
     <div className="flex h-dvh items-center justify-center bg-background p-6">
       <div className="w-full max-w-md space-y-6 rounded-md border bg-card p-6 shadow-sm">
         <div className="space-y-2 text-center">
-          <h1 className="text-xl font-semibold tracking-tight">Set a new password</h1>
-          <p className="text-sm text-muted-foreground">
-            Choose a new password for your account.
-          </p>
+          <h1 className="font-semibold text-xl tracking-tight">Set a new password</h1>
+          <p className="text-muted-foreground text-sm">Choose a new password for your account.</p>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1 text-sm">
@@ -76,12 +75,12 @@ export default function ResetPasswordPage() {
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {message && <p className="text-sm text-emerald-600">{message}</p>}
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          {message && <p className="text-emerald-600 text-sm">{message}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-60"
           >
             {loading ? "Updating..." : "Update password"}
           </button>

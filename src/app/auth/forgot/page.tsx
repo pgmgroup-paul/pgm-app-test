@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { serverSupabase } from "@/lib/serverSupabase";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
 
 async function requestReset(formData: FormData) {
   "use server";
@@ -44,14 +44,12 @@ export default function ForgotPasswordPage({ searchParams }: ForgotPageProps) {
     <div className="flex h-dvh items-center justify-center bg-background p-6">
       <div className="w-full max-w-md space-y-6 rounded-md border bg-card p-6 shadow-sm">
         <div className="space-y-2 text-center">
-          <h1 className="text-xl font-semibold tracking-tight">Reset password</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-semibold text-xl tracking-tight">Reset password</h1>
+          <p className="text-muted-foreground text-sm">
             Enter your email and we&apos;ll send you a link to set a new password.
           </p>
           {sent && (
-            <p className="text-sm text-emerald-600">
-              If an account exists for that email, a reset link has been sent.
-            </p>
+            <p className="text-emerald-600 text-sm">If an account exists for that email, a reset link has been sent.</p>
           )}
         </div>
         <form action={requestReset} className="space-y-4">
@@ -69,7 +67,7 @@ export default function ForgotPasswordPage({ searchParams }: ForgotPageProps) {
           </div>
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           >
             Send reset link
           </button>

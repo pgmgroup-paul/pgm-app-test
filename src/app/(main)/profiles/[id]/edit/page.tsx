@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { serverSupabase } from "@/lib/serverSupabase";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
 
 interface EditProfilePageProps {
   params: Promise<{
@@ -67,10 +67,10 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
   const profile = data;
 
   return (
-    <div className="space-y-6 p-6 max-w-xl">
+    <div className="max-w-xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Edit User</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="font-semibold text-2xl tracking-tight">Edit User</h1>
+        <p className="text-muted-foreground text-sm">
           Update basic information for this user. (Role and permissions can be wired in later.)
         </p>
       </div>
@@ -118,7 +118,7 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
             <div className="space-y-1">
               <label htmlFor="role" className="font-medium">
                 Role
@@ -178,7 +178,7 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
 
           <button
             type="submit"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           >
             Save changes
           </button>
@@ -197,10 +197,7 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
 
                 const id = (formData.get("id") || "").toString();
 
-                const { error } = await serverSupabase
-                  .from("profiles")
-                  .update({ is_active: true })
-                  .eq("id", id);
+                const { error } = await serverSupabase.from("profiles").update({ is_active: true }).eq("id", id);
 
                 if (error) {
                   console.error("Error reactivating user", error);
@@ -213,13 +210,13 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
               <input type="hidden" name="id" value={profile.id} />
               <div className="space-y-1 text-sm">
                 <div className="font-medium text-emerald-700">Reactivate user</div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   This will restore the user to the active list and allow them to sign in again.
                 </p>
               </div>
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+                className="inline-flex items-center rounded-md border border-emerald-600 px-3 py-2 font-medium text-emerald-700 text-sm hover:bg-emerald-50"
               >
                 Reactivate User
               </button>
@@ -236,10 +233,7 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
 
                 const id = (formData.get("id") || "").toString();
 
-                const { error } = await serverSupabase
-                  .from("profiles")
-                  .update({ is_active: false })
-                  .eq("id", id);
+                const { error } = await serverSupabase.from("profiles").update({ is_active: false }).eq("id", id);
 
                 if (error) {
                   console.error("Error deactivating user", error);
@@ -252,14 +246,14 @@ export default async function EditProfilePage({ params }: EditProfilePageProps) 
               <input type="hidden" name="id" value={profile.id} />
               <div className="space-y-1 text-sm">
                 <div className="font-medium text-destructive">Deactivate user</div>
-                <p className="text-xs text-muted-foreground">
-                  The user will no longer be able to sign in or appear in the active user list, but their
-                  data will be kept for records.
+                <p className="text-muted-foreground text-xs">
+                  The user will no longer be able to sign in or appear in the active user list, but their data will be
+                  kept for records.
                 </p>
               </div>
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md border border-destructive px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/5"
+                className="inline-flex items-center rounded-md border border-destructive px-3 py-2 font-medium text-destructive text-sm hover:bg-destructive/5"
               >
                 Deactivate User
               </button>

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { serverSupabase } from "@/lib/serverSupabase";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
 
 async function createUser(formData: FormData) {
   "use server";
@@ -73,10 +73,10 @@ export default async function NewUserPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-xl">
+    <div className="max-w-xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Add User</h1>
-        <p className="text-sm text-muted-foreground">Create a new user profile.</p>
+        <h1 className="font-semibold text-2xl tracking-tight">Add User</h1>
+        <p className="text-muted-foreground text-sm">Create a new user profile.</p>
       </div>
 
       <div className="space-y-4 rounded-md border p-4">
@@ -131,7 +131,7 @@ export default async function NewUserPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
             <div className="space-y-1">
               <label htmlFor="role" className="font-medium">
                 Role
@@ -191,7 +191,7 @@ export default async function NewUserPage() {
 
           <button
             type="submit"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           >
             Save user
           </button>

@@ -1,18 +1,18 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { serverSupabase } from "@/lib/serverSupabase";
-import { NewProductErrors } from "./new-product-errors";
-import { UpcField } from "../upc-field";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
+
 import { ImageField } from "../image-field";
+import { UpcField } from "../upc-field";
+import { NewProductErrors } from "./new-product-errors";
 
 async function createProduct(formData: FormData) {
   "use server";
 
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
@@ -94,18 +94,17 @@ async function createProduct(formData: FormData) {
 export default async function NewProductPage() {
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-xl">
+    <div className="max-w-xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Add Product</h1>
-        <p className="text-sm text-muted-foreground">Create a new catalog product.</p>
+        <h1 className="font-semibold text-2xl tracking-tight">Add Product</h1>
+        <p className="text-muted-foreground text-sm">Create a new catalog product.</p>
         <NewProductErrors />
       </div>
 
@@ -169,7 +168,7 @@ export default async function NewProductPage() {
 
           <button
             type="submit"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           >
             Save product
           </button>

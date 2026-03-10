@@ -30,7 +30,7 @@ export function ImageField() {
       <button
         type="button"
         onClick={handleUseWhiteBox}
-        className="mt-1 inline-flex items-center rounded-md border border-dashed border-input px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/40"
+        className="mt-1 inline-flex items-center rounded-md border border-input border-dashed px-2 py-1 font-medium text-muted-foreground text-xs hover:bg-muted/40"
       >
         Use white box
       </button>

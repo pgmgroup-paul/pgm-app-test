@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import { ChevronRight, MailIcon, PlusCircleIcon } from "lucide-react";
 
@@ -164,7 +165,7 @@ export function NavMain({ items }: NavMainProps) {
     return () => {
       cancelled = true;
     };
-  }, [path]);
+  }, []);
 
   const isItemActive = (url: string, subItems?: NavMainItem["subItems"]) => {
     if (subItems?.length) {
@@ -211,78 +212,78 @@ export function NavMain({ items }: NavMainProps) {
 
           // Apply simple role-based filtering to items
           const filteredItems = group.items
-          .map((item) => {
-            // Customers: for the Store Front group, show all items; other groups are filtered above
-            if (role === "customer") {
+            .map((item) => {
+              // Customers: for the Store Front group, show all items; other groups are filtered above
+              if (role === "customer") {
+                return item;
+              }
+
+              // Hide Profiles entry for non-admins
+              if (role !== "admin" && item.title === "Profiles") {
+                return null;
+              }
+
+              // Hide Catalog for non-admins and non-staff
+              if (item.title === "Catalog" && role !== "admin" && role !== "staff") {
+                return null;
+              }
+
+              // For items with subItems, filter admin-only entries like Permissions
+              if (role !== "admin" && item.subItems) {
+                const subItems = item.subItems.filter((sub) => sub.title !== "Permissions");
+                return { ...item, subItems };
+              }
+
               return item;
-            }
-
-            // Hide Profiles entry for non-admins
-            if (role !== "admin" && item.title === "Profiles") {
-              return null;
-            }
-
-            // Hide Catalog for non-admins and non-staff
-            if (item.title === "Catalog" && role !== "admin" && role !== "staff") {
-              return null;
-            }
-
-            // For items with subItems, filter admin-only entries like Permissions
-            if (role !== "admin" && item.subItems) {
-              const subItems = item.subItems.filter((sub) => sub.title !== "Permissions");
-              return { ...item, subItems };
-            }
-
-            return item;
-          })
-          .filter((item): item is NavMainItem => item !== null);
+            })
+            .filter((item): item is NavMainItem => item !== null);
 
           if (filteredItems.length === 0) return null;
 
           return (
-          <SidebarGroup key={group.id}>
-            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
-            <SidebarGroupContent className="flex flex-col gap-2">
-              <SidebarMenu>
-                {filteredItems.map((item) => {
-                  if (state === "collapsed" && !isMobile) {
-                    // If no subItems, just render the button as a link
-                    if (!item.subItems) {
-                      return (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton
-                            asChild
-                            aria-disabled={item.comingSoon}
-                            tooltip={item.title}
-                            isActive={isItemActive(item.url)}
-                          >
-                            <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
-                              {item.icon && <item.icon />}
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
+            <SidebarGroup key={group.id}>
+              {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+              <SidebarGroupContent className="flex flex-col gap-2">
+                <SidebarMenu>
+                  {filteredItems.map((item) => {
+                    if (state === "collapsed" && !isMobile) {
+                      // If no subItems, just render the button as a link
+                      if (!item.subItems) {
+                        return (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton
+                              asChild
+                              aria-disabled={item.comingSoon}
+                              tooltip={item.title}
+                              isActive={isItemActive(item.url)}
+                            >
+                              <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
+                                {item.icon && <item.icon />}
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      }
+                      // Otherwise, render the dropdown as before
+                      return <NavItemCollapsed key={item.title} item={item} isActive={isItemActive} />;
                     }
-                    // Otherwise, render the dropdown as before
-                    return <NavItemCollapsed key={item.title} item={item} isActive={isItemActive} />;
-                  }
-                  // Expanded view
-                  return (
-                    <NavItemExpanded
-                      key={item.title}
-                      item={item}
-                      isActive={isItemActive}
-                      isSubmenuOpen={isSubmenuOpen}
-                    />
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        );
-      })
-      .filter(Boolean)}
+                    // Expanded view
+                    return (
+                      <NavItemExpanded
+                        key={item.title}
+                        item={item}
+                        isActive={isItemActive}
+                        isSubmenuOpen={isSubmenuOpen}
+                      />
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })
+        .filter(Boolean)}
     </>
   );
 }

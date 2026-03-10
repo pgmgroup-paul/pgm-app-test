@@ -35,13 +35,13 @@ export function UpcField() {
       <button
         type="button"
         onClick={handleGenerate}
-        className="mt-1 inline-flex items-center rounded-md border border-dashed border-input px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/40"
+        className="mt-1 inline-flex items-center rounded-md border border-input border-dashed px-2 py-1 font-medium text-muted-foreground text-xs hover:bg-muted/40"
       >
         Generate temporary UPC
       </button>
       <p className="text-[11px] text-muted-foreground">
-        Use this when the real UPC is not yet available. A TEMP- prefixed value will be generated
-        and can be updated later.
+        Use this when the real UPC is not yet available. A TEMP- prefixed value will be generated and can be updated
+        later.
       </p>
     </div>
   );

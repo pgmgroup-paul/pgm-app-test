@@ -24,9 +24,7 @@ export function AdminProductsTable({ products }: ProductsTableProps) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const categories = useMemo(() => {
-    const vals = products
-      .map((p) => (p.category ?? "").trim())
-      .filter((v) => v.length > 0);
+    const vals = products.map((p) => (p.category ?? "").trim()).filter((v) => v.length > 0);
     return Array.from(new Set(vals)).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
@@ -37,7 +35,8 @@ export function AdminProductsTable({ products }: ProductsTableProps) {
 
     if (term) {
       rows = rows.filter((p) => {
-        const haystack = `${p.product_name} ${p.sku} ${p.sku_var ?? ""} ${p.category ?? ""} ${p.upc ?? ""}`.toLowerCase();
+        const haystack =
+          `${p.product_name} ${p.sku} ${p.sku_var ?? ""} ${p.category ?? ""} ${p.upc ?? ""}`.toLowerCase();
         return haystack.includes(term);
       });
     }
@@ -149,17 +148,11 @@ export function AdminProductsTable({ products }: ProductsTableProps) {
                   <td className="border-b px-3 py-2">{item.category}</td>
                   <td className="border-b px-3 py-2 font-mono text-xs">{item.upc}</td>
                   <td className="border-b px-3 py-2 font-mono text-xs">{item.created_at}</td>
-                  <td className="border-b px-3 py-2 text-xs space-x-2">
-                    <a
-                      href={`/products/${item.id}/edit`}
-                      className="text-primary hover:underline"
-                    >
+                  <td className="space-x-2 border-b px-3 py-2 text-xs">
+                    <a href={`/products/${item.id}/edit`} className="text-primary hover:underline">
                       Edit
                     </a>
-                    <a
-                      href={`/products/${item.id}/edit`}
-                      className="text-muted-foreground hover:underline"
-                    >
+                    <a href={`/products/${item.id}/edit`} className="text-muted-foreground hover:underline">
                       View details
                     </a>
                   </td>

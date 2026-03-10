@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Command } from "lucide-react";
+import { redirect } from "next/navigation";
+
 import { createClient } from "@supabase/supabase-js";
+import { Command } from "lucide-react";
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -41,12 +42,14 @@ async function login(formData: FormData) {
 }
 
 interface LoginPageProps {
-  searchParams?: {
+  searchParams: Promise<{
     error?: string;
-  };
+  }>;
 }
 
-export default function LoginV1({ searchParams }: LoginPageProps) {
+export default async function LoginV1({ searchParams }: LoginPageProps) {
+  const { error } = await searchParams;
+
   return (
     <div className="flex h-dvh">
       <div className="hidden bg-primary lg:block lg:w-1/3">
@@ -65,12 +68,8 @@ export default function LoginV1({ searchParams }: LoginPageProps) {
         <div className="w-full max-w-md space-y-10 py-24 lg:py-32">
           <div className="space-y-4 text-center">
             <div className="font-medium tracking-tight">Login</div>
-            <div className="mx-auto max-w-xl text-muted-foreground">
-              Welcome. Enter your email and password.
-            </div>
-            {searchParams?.error && (
-              <p className="text-sm text-destructive">Incorrect email or password. Please try again.</p>
-            )}
+            <div className="mx-auto max-w-xl text-muted-foreground">Welcome. Enter your email and password.</div>
+            {error && <p className="text-destructive text-sm">Incorrect email or password. Please try again.</p>}
           </div>
           <div className="space-y-4">
             <form action={login} className="space-y-4">
@@ -102,12 +101,12 @@ export default function LoginV1({ searchParams }: LoginPageProps) {
               </div>
               <button
                 type="submit"
-                className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
               >
                 Login
               </button>
             </form>
-            <p className="text-center text-muted-foreground text-xs space-y-1">
+            <p className="space-y-1 text-center text-muted-foreground text-xs">
               <span className="block">
                 Don&apos;t have an account?{" "}
                 <Link prefetch={false} href="/auth/v1/register" className="text-primary">

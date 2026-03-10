@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
+import type { Metadata } from "next";
+
 import { serverSupabase } from "@/lib/serverSupabase";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
+
 import { ProfilesTable } from "./profiles-table";
 
 export const metadata: Metadata = {
@@ -37,16 +39,16 @@ export default async function ProfilesPage() {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">User Profiles</h1>
+        <h1 className="font-semibold text-2xl tracking-tight">User Profiles</h1>
         <a
           href="/profiles/new"
-          className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
         >
           Add User
         </a>
       </div>
       {profiles.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No profiles found.</p>
+        <p className="text-muted-foreground text-sm">No profiles found.</p>
       ) : (
         <ProfilesTable profiles={profiles as any} />
       )}

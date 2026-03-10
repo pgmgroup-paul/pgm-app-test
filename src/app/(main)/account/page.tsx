@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { serverSupabase } from "@/lib/serverSupabase";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
 
 async function updateAccount(formData: FormData) {
   "use server";
@@ -37,10 +37,10 @@ export default async function AccountPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-xl">
+    <div className="max-w-xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
-        <p className="text-sm text-muted-foreground">View and update your account details.</p>
+        <h1 className="font-semibold text-2xl tracking-tight">Account</h1>
+        <p className="text-muted-foreground text-sm">View and update your account details.</p>
       </div>
 
       <div className="space-y-4 rounded-md border p-4">
@@ -49,7 +49,7 @@ export default async function AccountPage() {
           <div className="font-mono text-xs">{profile.email}</div>
         </div>
 
-        <form action={updateAccount} className="space-y-4 pt-2 border-t mt-4">
+        <form action={updateAccount} className="mt-4 space-y-4 border-t pt-2">
           <div className="space-y-1 text-sm">
             <label htmlFor="full_name" className="font-medium">
               Name
@@ -78,7 +78,7 @@ export default async function AccountPage() {
 
           <button
             type="submit"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           >
             Save changes
           </button>

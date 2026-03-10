@@ -23,9 +23,7 @@ export function StorefrontProductsTable({ products }: ProductsTableProps) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const categories = useMemo(() => {
-    const vals = products
-      .map((p) => (p.category ?? "").trim())
-      .filter((v) => v.length > 0);
+    const vals = products.map((p) => (p.category ?? "").trim()).filter((v) => v.length > 0);
     return Array.from(new Set(vals)).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
@@ -144,10 +142,7 @@ export function StorefrontProductsTable({ products }: ProductsTableProps) {
                 <td className="border-b px-3 py-2">{item.product_name}</td>
                 <td className="border-b px-3 py-2">{item.category}</td>
                 <td className="border-b px-3 py-2 text-xs">
-                  <a
-                    href={`/storefront/products/${item.id}`}
-                    className="text-primary hover:underline"
-                  >
+                  <a href={`/storefront/products/${item.id}`} className="text-primary hover:underline">
                     View details
                   </a>
                 </td>

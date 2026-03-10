@@ -1,8 +1,9 @@
 import {
   Banknote,
-  Calendar,
+  BookOpenCheck,
   ChartBar,
   CirclePile,
+  CirclePlus,
   DollarSign,
   Fingerprint,
   Forklift,
@@ -13,18 +14,13 @@ import {
   LayoutDashboard,
   ListCheck,
   ListChecks,
-  Lock,
   type LucideIcon,
-  Mail,
-  MessageSquare,
   Package,
   ReceiptText,
-  ShieldUser,
   ShoppingBag,
   SquareArrowUpRight,
+  Truck,
   Users,
-  CirclePlus,
-  BookOpenCheck,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -115,9 +111,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Inventory",
         url: "/inventory",
         icon: CirclePile,
-        subItems: [
-          { title: "Check Inventory", url: "/inventory", icon: ListChecks },
-        ],
+        subItems: [{ title: "Check Inventory", url: "/inventory", icon: ListChecks }],
+      },
+      {
+        title: "Purchase Orders",
+        url: "/purchase-orders",
+        icon: ReceiptText,
       },
       {
         title: "Profiles",
@@ -139,6 +138,69 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 3,
+    label: "Logistics",
+    items: [
+      {
+        title: "Shipments",
+        url: "/shipments",
+        icon: Truck,
+      },
+      {
+        title: "Demand",
+        url: "/shipments/demand",
+        icon: ChartBar,
+      },
+    ],
+  },
+  {
+    id: 4,
+    label: "Warehouse",
+    items: [
+      {
+        title: "Inbound",
+        url: "/warehouse/add",
+        icon: Package,
+      },
+      {
+        title: "Outbound",
+        url: "/warehouse/deduct",
+        icon: SquareArrowUpRight,
+      },
+      {
+        title: "Internal movement",
+        url: "/warehouse/consolidate-transfers",
+        icon: CirclePile,
+      },
+      {
+        title: "Container received",
+        url: "/warehouse/receiving",
+        icon: Package,
+      },
+      {
+        title: "Orders",
+        url: "/warehouse/orders-to-process",
+        icon: ReceiptText,
+      },
+      {
+        title: "Tools",
+        url: "/warehouse/tools",
+        icon: Kanban,
+        subItems: [
+          { title: "Search", url: "/warehouse/search", icon: ListChecks },
+          { title: "Movement history", url: "/warehouse/movements", icon: ReceiptText },
+          { title: "Enter case and pallet dimensions", url: "/warehouse/dimensions", icon: Images },
+          { title: "Check pallet configuration", url: "/warehouse/check-pallet", icon: Kanban },
+          {
+            title: "Transfer overflow to dropship area",
+            url: "/warehouse/dropship-transfer",
+            icon: BookOpenCheck,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 5,
     label: "Store Front",
     items: [
       {
@@ -160,15 +222,70 @@ export const sidebarItems: NavGroup[] = [
     ],
   },
   {
-    id: 4,
-    label: "Misc",
+    id: 6,
+    label: "Sales",
     items: [
       {
-        title: "Others",
-        url: "/dashboard/coming-soon",
-        icon: SquareArrowUpRight,
-        comingSoon: true,
+        title: "Sales orders",
+        url: "/sales-orders",
+        icon: ReceiptText,
+      },
+    ],
+  },
+  {
+    id: 7,
+    label: "Suppliers",
+    items: [
+      {
+        title: "Case details",
+        url: "/supplier/case-details",
+        icon: ReceiptText,
+      },
+      {
+        title: "Production status",
+        url: "/supplier/production-status",
+        icon: ListCheck,
       },
     ],
   },
 ];
+
+// Role-aware filtering so different user types see only the relevant sections
+export interface SidebarProfile {
+  role?: string | null;
+  staff_type?: string | null;
+  customer_tier?: string | null;
+}
+
+export function getSidebarItemsForProfile(profile: SidebarProfile | null | undefined): NavGroup[] {
+  const role = profile?.role ?? null;
+  const staffType = profile?.staff_type ?? null;
+
+  if (!role) return sidebarItems;
+
+  if (role === "admin") {
+    return sidebarItems;
+  }
+
+  if (role === "supplier") {
+    // Suppliers should only see the Suppliers section.
+    return sidebarItems.filter((g) => g.label === "Suppliers");
+  }
+
+  if (role === "staff" && staffType === "warehouse") {
+    // Warehouse staff should only see the Warehouse section.
+    return sidebarItems.filter((g) => g.label === "Warehouse");
+  }
+
+  if (role === "staff") {
+    // Staff (non-admin, non-warehouse) should not see Suppliers.
+    return sidebarItems.filter((g) => g.label !== "Suppliers");
+  }
+
+  if (role === "customer") {
+    // Customers should only see the storefront section.
+    return sidebarItems.filter((g) => g.label === "Store Front");
+  }
+
+  return sidebarItems;
+}

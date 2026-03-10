@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { CircleHelp, ClipboardList, Command, Database, File, Search, Settings } from "lucide-react";
@@ -17,7 +18,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
-import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
+import { getSidebarItemsForProfile, type NavGroup } from "@/navigation/sidebar/sidebar-items";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
 import { NavMain } from "./nav-main";
@@ -76,31 +77,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   const [sidebarUser, setSidebarUser] = useState<SidebarUser | null>(null);
-  const path = usePathname();
+  const [navItems, setNavItems] = useState<NavGroup[]>([]);
+  const _path = usePathname();
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/me")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled && data?.profile) {
-          const email = data.profile.email ?? "";
-          const name = data.profile.full_name ?? email;
+        if (cancelled) return;
+
+        const profile = data?.profile ?? null;
+
+        if (profile) {
+          const email = profile.email ?? "";
+          const name = profile.full_name ?? email;
           setSidebarUser({
             name,
             email,
             avatar: "",
           });
+        } else {
+          setSidebarUser(null);
         }
+
+        setNavItems(getSidebarItemsForProfile(profile));
       })
       .catch(() => {
-        if (!cancelled) setSidebarUser(null);
+        if (!cancelled) {
+          setSidebarUser(null);
+          setNavItems(getSidebarItemsForProfile(null));
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [path]);
+  }, []);
 
   const variant = isSynced ? sidebarVariant : props.variant;
   const collapsible = isSynced ? sidebarCollapsible : props.collapsible;
@@ -120,13 +133,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sidebarItems} />
+        <NavMain items={navItems} />
         {/* <NavDocuments items={data.documents} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
-      <SidebarFooter>
-        {sidebarUser && <NavUser user={sidebarUser} />}
-      </SidebarFooter>
+      <SidebarFooter>{sidebarUser && <NavUser user={sidebarUser} />}</SidebarFooter>
     </Sidebar>
   );
 }

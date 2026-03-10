@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 
-import { getCurrentUserProfile } from "@/server/auth/current-user";
-import { serverSupabase } from "@/lib/serverSupabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { serverSupabase } from "@/lib/serverSupabase";
+import { getCurrentUserProfile } from "@/server/auth/current-user";
+
 import { EditProductAlerts } from "./edit-product-alerts";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +19,7 @@ async function updateBasicInfo(formData: FormData) {
 
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
@@ -80,8 +80,7 @@ async function updateMarketing(formData: FormData) {
 
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
@@ -109,18 +108,16 @@ async function updateMarketing(formData: FormData) {
       continue;
     }
 
-    const { error } = await serverSupabase
-      .from("product_marketing_assets")
-      .upsert(
-        {
-          product_id: id,
-          type,
-          url,
-        },
-        {
-          onConflict: "product_id,type",
-        },
-      );
+    const { error } = await serverSupabase.from("product_marketing_assets").upsert(
+      {
+        product_id: id,
+        type,
+        url,
+      },
+      {
+        onConflict: "product_id,type",
+      },
+    );
 
     if (error) {
       console.error("Error updating marketing asset", type, error);
@@ -136,8 +133,7 @@ async function updatePermissions(formData: FormData) {
 
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
@@ -148,10 +144,7 @@ async function updatePermissions(formData: FormData) {
   const allowedTiers = formData.getAll("allowed_tiers").map((v) => v.toString());
 
   // Clear existing tier permissions for this product
-  const { error: delError } = await serverSupabase
-    .from("product_tier_permissions")
-    .delete()
-    .eq("product_id", id);
+  const { error: delError } = await serverSupabase.from("product_tier_permissions").delete().eq("product_id", id);
 
   if (delError) {
     console.error("Error clearing tier permissions", delError);
@@ -181,8 +174,7 @@ async function updateDimensions(formData: FormData) {
 
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
@@ -223,9 +215,7 @@ async function updateDimensions(formData: FormData) {
   const cartonsPerLayer = num("cartons_per_layer");
   const numberOfLayers = num("number_of_layers");
   const cartonsPerPallet =
-    cartonsPerLayer !== null && numberOfLayers !== null
-      ? cartonsPerLayer * numberOfLayers
-      : null;
+    cartonsPerLayer !== null && numberOfLayers !== null ? cartonsPerLayer * numberOfLayers : null;
 
   const productId = id;
 
@@ -234,18 +224,16 @@ async function updateDimensions(formData: FormData) {
     const hasValue = Object.values(fields).some((v) => v !== null && v !== undefined);
     if (!hasValue) return;
 
-    const { error } = await serverSupabase
-      .from("product_dimensions")
-      .upsert(
-        {
-          product_id: productId,
-          kind,
-          ...fields,
-        },
-        {
-          onConflict: "product_id,kind",
-        },
-      );
+    const { error } = await serverSupabase.from("product_dimensions").upsert(
+      {
+        product_id: productId,
+        kind,
+        ...fields,
+      },
+      {
+        onConflict: "product_id,kind",
+      },
+    );
 
     if (error) {
       console.error("Error updating dimensions", kind, error);
@@ -303,8 +291,7 @@ interface EditPageSearchParams {
 export default async function EditProductPage({ params, searchParams }: EditProductPageProps & EditPageSearchParams) {
   const current = await getCurrentUserProfile();
   const isAllowed =
-    current &&
-    (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
+    current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
 
   if (!isAllowed) {
     redirect("/unauthorized");
@@ -356,19 +343,19 @@ export default async function EditProductPage({ params, searchParams }: EditProd
   const activeTab = searchParams?.tab ?? "basic";
 
   return (
-    <div className="space-y-6 p-6 max-w-3xl">
+    <div className="max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Edit Product</h1>
-          <p className="text-sm text-muted-foreground">Update catalog information for this product.</p>
-          <p className="text-xs text-muted-foreground font-mono">
+          <h1 className="font-semibold text-2xl tracking-tight">Edit Product</h1>
+          <p className="text-muted-foreground text-sm">Update catalog information for this product.</p>
+          <p className="font-mono text-muted-foreground text-xs">
             SKU: {product.sku}
             {product.sku_var ? `-${product.sku_var}` : ""}
           </p>
         </div>
         <a
           href="/products"
-          className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
+          className="inline-flex items-center rounded-md border border-input px-3 py-1.5 font-medium text-foreground text-sm hover:bg-muted"
         >
           Close
         </a>
@@ -377,18 +364,17 @@ export default async function EditProductPage({ params, searchParams }: EditProd
       <EditProductAlerts />
 
       {product.image && (
-        <div className="rounded-md border bg-muted/40 p-3 flex items-center gap-4">
+        <div className="flex items-center gap-4 rounded-md border bg-muted/40 p-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={product.image}
             alt={product.product_name}
-            className="h-28 w-28 rounded border object-cover bg-background"
+            className="h-28 w-28 rounded border bg-background object-cover"
           />
           <div className="space-y-1 text-sm">
             <div className="font-medium">Primary image</div>
-            <p className="text-xs text-muted-foreground">
-              This is the main product image used in the catalog (from the Image URL field in Basic
-              info).
+            <p className="text-muted-foreground text-xs">
+              This is the main product image used in the catalog (from the Image URL field in Basic info).
             </p>
           </div>
         </div>
@@ -493,7 +479,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
 
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
               >
                 Save basic info
               </button>
@@ -514,7 +500,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   id="package_picture"
                   name="package_picture"
                   type="url"
-                  defaultValue={(assetsByType["package_picture"] as string | undefined) ?? ""}
+                  defaultValue={(assetsByType.package_picture as string | undefined) ?? ""}
                   placeholder="https://..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -528,8 +514,8 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   id="sales_sheet"
                   name="sales_sheet"
                   type="url"
-                  defaultValue={(assetsByType["sales_sheet"] as string | undefined) ?? ""}
-                  placeholder="https://..." 
+                  defaultValue={(assetsByType.sales_sheet as string | undefined) ?? ""}
+                  placeholder="https://..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
@@ -542,8 +528,8 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   id="product_picture"
                   name="product_picture"
                   type="url"
-                  defaultValue={(assetsByType["product_picture"] as string | undefined) ?? ""}
-                  placeholder="https://..." 
+                  defaultValue={(assetsByType.product_picture as string | undefined) ?? ""}
+                  placeholder="https://..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
@@ -556,8 +542,8 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   id="video"
                   name="video"
                   type="url"
-                  defaultValue={(assetsByType["video"] as string | undefined) ?? ""}
-                  placeholder="https://..." 
+                  defaultValue={(assetsByType.video as string | undefined) ?? ""}
+                  placeholder="https://..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
@@ -570,15 +556,15 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   id="ecommerce_image"
                   name="ecommerce_image"
                   type="url"
-                  defaultValue={(assetsByType["ecommerce_image"] as string | undefined) ?? ""}
-                  placeholder="https://..." 
+                  defaultValue={(assetsByType.ecommerce_image as string | undefined) ?? ""}
+                  placeholder="https://..."
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
 
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
               >
                 Save marketing materials
               </button>
@@ -596,7 +582,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   <h2 className="font-medium">Item dimensions</h2>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label htmlFor="item_length" className="block text-xs font-medium">
+                      <label htmlFor="item_length" className="block font-medium text-xs">
                         Length
                       </label>
                       <input
@@ -604,12 +590,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="item_length"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["item"]?.length as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.item?.length as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="item_width" className="block text-xs font-medium">
+                      <label htmlFor="item_width" className="block font-medium text-xs">
                         Width
                       </label>
                       <input
@@ -617,12 +603,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="item_width"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["item"]?.width as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.item?.width as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="item_height" className="block text-xs font-medium">
+                      <label htmlFor="item_height" className="block font-medium text-xs">
                         Height
                       </label>
                       <input
@@ -630,7 +616,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="item_height"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["item"]?.height as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.item?.height as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
@@ -642,7 +628,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   <h2 className="font-medium">Package dimensions</h2>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label htmlFor="package_length" className="block text-xs font-medium">
+                      <label htmlFor="package_length" className="block font-medium text-xs">
                         Length
                       </label>
                       <input
@@ -650,12 +636,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="package_length"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["package"]?.length as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.package?.length as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="package_width" className="block text-xs font-medium">
+                      <label htmlFor="package_width" className="block font-medium text-xs">
                         Width
                       </label>
                       <input
@@ -663,12 +649,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="package_width"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["package"]?.width as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.package?.width as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="package_height" className="block text-xs font-medium">
+                      <label htmlFor="package_height" className="block font-medium text-xs">
                         Height
                       </label>
                       <input
@@ -676,14 +662,14 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="package_height"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["package"]?.height as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.package?.height as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <label htmlFor="package_weight" className="block text-xs font-medium">
+                      <label htmlFor="package_weight" className="block font-medium text-xs">
                         Weight
                       </label>
                       <input
@@ -691,7 +677,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="package_weight"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["package"]?.weight as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.package?.weight as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
@@ -705,7 +691,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   <h2 className="font-medium">Carton dimensions</h2>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label htmlFor="carton_length" className="block text-xs font-medium">
+                      <label htmlFor="carton_length" className="block font-medium text-xs">
                         Length
                       </label>
                       <input
@@ -713,12 +699,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="carton_length"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["carton"]?.length as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.carton?.length as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="carton_width" className="block text-xs font-medium">
+                      <label htmlFor="carton_width" className="block font-medium text-xs">
                         Width
                       </label>
                       <input
@@ -726,12 +712,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="carton_width"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["carton"]?.width as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.carton?.width as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="carton_height" className="block text-xs font-medium">
+                      <label htmlFor="carton_height" className="block font-medium text-xs">
                         Height
                       </label>
                       <input
@@ -739,14 +725,14 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="carton_height"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["carton"]?.height as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.carton?.height as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <label htmlFor="carton_weight" className="block text-xs font-medium">
+                      <label htmlFor="carton_weight" className="block font-medium text-xs">
                         Weight
                       </label>
                       <input
@@ -754,12 +740,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="carton_weight"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["carton"]?.weight as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.carton?.weight as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="case_pack" className="block text-xs font-medium">
+                      <label htmlFor="case_pack" className="block font-medium text-xs">
                         Case pack
                       </label>
                       <input
@@ -767,7 +753,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="case_pack"
                         type="number"
                         step="1"
-                        defaultValue={(dimByKind["package"]?.units_per as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.package?.units_per as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
@@ -779,7 +765,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                   <h2 className="font-medium">Pallet dimensions</h2>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label htmlFor="pallet_length" className="block text-xs font-medium">
+                      <label htmlFor="pallet_length" className="block font-medium text-xs">
                         Length
                       </label>
                       <input
@@ -787,12 +773,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="pallet_length"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["pallet"]?.length as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.pallet?.length as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="pallet_width" className="block text-xs font-medium">
+                      <label htmlFor="pallet_width" className="block font-medium text-xs">
                         Width
                       </label>
                       <input
@@ -800,12 +786,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="pallet_width"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["pallet"]?.width as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.pallet?.width as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="pallet_height" className="block text-xs font-medium">
+                      <label htmlFor="pallet_height" className="block font-medium text-xs">
                         Height
                       </label>
                       <input
@@ -813,14 +799,14 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="pallet_height"
                         type="number"
                         step="0.01"
-                        defaultValue={(dimByKind["pallet"]?.height as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.pallet?.height as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="mt-2 grid grid-cols-3 gap-2">
                     <div>
-                      <label htmlFor="cartons_per_layer" className="block text-xs font-medium">
+                      <label htmlFor="cartons_per_layer" className="block font-medium text-xs">
                         Cartons / layer
                       </label>
                       <input
@@ -828,12 +814,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="cartons_per_layer"
                         type="number"
                         step="1"
-                        defaultValue={(dimByKind["pallet"]?.cartons_per_layer as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.pallet?.cartons_per_layer as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="number_of_layers" className="block text-xs font-medium">
+                      <label htmlFor="number_of_layers" className="block font-medium text-xs">
                         Layers
                       </label>
                       <input
@@ -841,12 +827,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         name="number_of_layers"
                         type="number"
                         step="1"
-                        defaultValue={(dimByKind["pallet"]?.number_of_layers as number | undefined) ?? ""}
+                        defaultValue={(dimByKind.pallet?.number_of_layers as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                     </div>
                     <div>
-                      <label htmlFor="cartons_per_pallet" className="block text-xs font-medium">
+                      <label htmlFor="cartons_per_pallet" className="block font-medium text-xs">
                         Cartons / pallet
                       </label>
                       <input
@@ -854,7 +840,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         type="number"
                         step="1"
                         readOnly
-                        value={(dimByKind["pallet"]?.cartons_per_pallet as number | undefined) ?? ""}
+                        value={(dimByKind.pallet?.cartons_per_pallet as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-muted px-2 py-1 text-xs shadow-sm outline-none"
                       />
                     </div>
@@ -865,7 +851,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
 
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
               >
                 Save dimensions
               </button>
@@ -875,14 +861,13 @@ export default async function EditProductPage({ params, searchParams }: EditProd
 
         <TabsContent value="permissions" className="mt-4">
           <div className="space-y-4 rounded-md border p-4 text-sm">
-            <p className="text-xs text-muted-foreground">
-              Products are <span className="font-semibold">hidden by default</span> for customers.
-              Use the checkboxes below to allow specific customer tiers to see this product.
-              Admins and staff can always see all products.
+            <p className="text-muted-foreground text-xs">
+              Products are <span className="font-semibold">hidden by default</span> for customers. Use the checkboxes
+              below to allow specific customer tiers to see this product. Admins and staff can always see all products.
             </p>
 
             {distinctTiers.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 No customer tiers found. Set <code>customer_tier</code> values on profiles first.
               </p>
             ) : (
@@ -906,7 +891,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
 
                 <button
                   type="submit"
-                  className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                  className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-xs hover:bg-primary/90"
                 >
                   Save permissions
                 </button>

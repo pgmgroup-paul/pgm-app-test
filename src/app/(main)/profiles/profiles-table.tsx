@@ -37,9 +37,7 @@ export function ProfilesTable({ profiles }: ProfilesTableProps) {
 
   const filterOptions = useMemo(() => {
     if (!filterField) return [] as string[];
-    const values = profiles
-      .map((p) => (p[filterField] as string | null) ?? "")
-      .filter((v) => v && v.trim().length > 0);
+    const values = profiles.map((p) => (p[filterField] as string | null) ?? "").filter((v) => v && v.trim().length > 0);
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
   }, [profiles, filterField]);
 
@@ -124,7 +122,7 @@ export function ProfilesTable({ profiles }: ProfilesTableProps) {
               value={filterValue}
               onChange={(e) => setFilterValue(e.target.value)}
               disabled={!filterField || filterOptions.length === 0}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-48 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 md:w-48"
             >
               <option value="">Value…</option>
               {filterOptions.map((opt) => (
@@ -200,20 +198,17 @@ export function ProfilesTable({ profiles }: ProfilesTableProps) {
                 <td className="border-b px-3 py-2 text-xs">{p.customer_tier}</td>
                 <td className="border-b px-3 py-2 text-xs">
                   {p.is_active === false ? (
-                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground uppercase tracking-wide">
                       Inactive
                     </span>
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-700">
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700 uppercase tracking-wide">
                       Active
                     </span>
                   )}
                 </td>
                 <td className="border-b px-3 py-2 text-xs">
-                  <a
-                    href={`/profiles/${p.id}/edit`}
-                    className="text-primary hover:underline"
-                  >
+                  <a href={`/profiles/${p.id}/edit`} className="text-primary hover:underline">
                     Edit
                   </a>
                 </td>

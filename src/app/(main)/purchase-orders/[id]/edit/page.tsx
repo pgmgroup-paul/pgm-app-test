@@ -9,6 +9,11 @@ async function addPurchaseOrderLineFormAction(formData: FormData): Promise<void>
   await addPurchaseOrderLine(formData);
 }
 
+async function deletePurchaseOrderLineFormAction(formData: FormData): Promise<void> {
+  "use server";
+  await deletePurchaseOrderLine(formData);
+}
+
 interface PoWithLines {
   id: string;
   po_number: string;
@@ -324,7 +329,7 @@ export default async function EditPurchaseOrderPage({
                       {line.price != null ? line.price.toFixed(2) : "-"}
                     </td>
                     <td className="py-1 pr-2 text-right text-[11px]">
-                      <form action={deletePurchaseOrderLine}>
+                      <form action={deletePurchaseOrderLineFormAction}>
                         <input type="hidden" name="line_id" value={line.id} />
                         <input type="hidden" name="purchase_order_id" value={po.id} />
                         <button

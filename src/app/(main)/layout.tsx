@@ -12,6 +12,7 @@ import { getPreference } from "@/server/server-actions";
 import { LayoutControls } from "./dashboard/_components/sidebar/layout-controls";
 import { SearchDialog } from "./dashboard/_components/sidebar/search-dialog";
 import { ThemeSwitcher } from "./dashboard/_components/sidebar/theme-switcher";
+import { MobileNavDrawer } from "./MobileNavDrawer";
 
 export default async function Layout({ children }: Readonly<{ children: ReactNode }>) {
   const cookieStore = await cookies();
@@ -23,7 +24,10 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar variant={variant} collapsible={collapsible} />
+      {/* Desktop sidebar */}
+      <div className="hidden md:block">
+        <AppSidebar variant={variant} collapsible={collapsible} />
+      </div>
       <SidebarInset
         className={cn(
           "[html[data-content-layout=centered]_&]:mx-auto! [html[data-content-layout=centered]_&]:max-w-screen-2xl!",
@@ -34,12 +38,16 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
       >
         <header
           className={cn(
-            "flex h-12 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12",
+            "flex h-12 shrink-0 flex-col gap-0 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12",
             // Handle sticky navbar style with conditional classes so blur, background, z-index, and rounded corners remain consistent across all SidebarVariant layouts.
             "[html[data-navbar-style=sticky]_&]:sticky [html[data-navbar-style=sticky]_&]:top-0 [html[data-navbar-style=sticky]_&]:z-50 [html[data-navbar-style=sticky]_&]:overflow-hidden [html[data-navbar-style=sticky]_&]:rounded-t-[inherit] [html[data-navbar-style=sticky]_&]:bg-background/50 [html[data-navbar-style=sticky]_&]:backdrop-blur-md",
           )}
         >
-          <div className="flex w-full items-center justify-between px-4 lg:px-6">
+          {/* Mobile header + drawer */}
+          <MobileNavDrawer variant={variant} collapsible={collapsible} />
+
+          {/* Desktop header */}
+          <div className="hidden w-full items-center justify-between px-4 md:flex lg:px-6">
             <div className="flex items-center gap-1 lg:gap-2">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />

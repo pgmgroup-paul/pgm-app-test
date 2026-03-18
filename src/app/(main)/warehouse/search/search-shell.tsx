@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { loadSearchByLocation, type SearchLocationState } from "./search-location-load";
 import { loadSearchBySku, type SearchSkuState } from "./search-sku-load";
@@ -10,7 +10,24 @@ export function WarehouseSearchShell() {
 
   const [skuState, skuAction] = useActionState<SearchSkuState, FormData>(loadSearchBySku, { ok: null });
 
+  const skuFormRef = useRef<HTMLFormElement | null>(null);
+  const skuInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+    if (activeTab !== "sku") return;
+    if (!skuInputRef.current) return;
+
+    skuInputRef.current.focus();
+  }, [activeTab]);
+
   const [locState, locAction] = useActionState<SearchLocationState, FormData>(loadSearchByLocation, { ok: null });
+
+  const sortedSkuRows = skuState.rows
+    ? [...skuState.rows].sort((a, b) => (b.quantity_cases || 0) - (a.quantity_cases || 0))
+    : undefined;
 
   return (
     <div className="space-y-4">
@@ -39,17 +56,28 @@ export function WarehouseSearchShell() {
       {/* SKU tab */}
       {activeTab === "sku" && (
         <div className="space-y-3">
-          <form action={skuAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
+          <form ref={skuFormRef} action={skuAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
             <div className="space-y-1 text-sm">
               <label htmlFor="sku" className="font-medium">
                 SKU
               </label>
               <input
+                ref={skuInputRef}
                 id="sku"
                 name="sku"
                 type="text"
                 required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Search SKU or product name"
+                className="w-full rounded-md border border-input bg-background px-3 py-3 text-base shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    // Submit via native form submission
+                    if (skuFormRef.current) {
+                      skuFormRef.current.requestSubmit();
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -90,10 +118,12 @@ export function WarehouseSearchShell() {
             )}
           </form>
 
-          {skuState.ok === true && skuState.rows && skuState.rows.length > 0 && (
+          {skuState.ok === true && sortedSkuRows && sortedSkuRows.length > 0 && (
             <div className="rounded-md border px-3 py-2 text-xs">
               <p className="mb-1 font-medium">Locations for this product</p>
-              <div className="max-h-64 overflow-auto">
+
+              {/* Desktop table */}
+              <div className="hidden max-h-64 overflow-auto md:block">
                 <table className="w-full text-left text-[11px]">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
@@ -102,14 +132,51 @@ export function WarehouseSearchShell() {
                     </tr>
                   </thead>
                   <tbody>
-                    {skuState.rows.map((row) => (
-                      <tr key={row.location_id} className="border-b last:border-none">
+                    {sortedSkuRows?.map((row) => (
+                      <tr
+                        key={row.location_id}
+                        className="cursor-pointer border-b last:border-none hover:bg-muted/40"
+                        onClick={() => {
+                          if (!skuState.productId) return;
+                          window.location.href = `/warehouse/deduct?product_id=${encodeURIComponent(skuState.productId)}&location=${encodeURIComponent(row.location_code)}&reason=search`;
+                        }}
+                      >
                         <td className="py-1 pr-2 font-mono text-[11px]">{row.location_code}</td>
                         <td className="py-1 pr-2 text-right text-[11px]">{row.quantity_cases}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="space-y-2 md:hidden">
+                <div className="w-full rounded-md border bg-white px-3 py-2 text-[11px] shadow-sm">
+                  <div className="font-mono text-[11px]">
+                    {skuState.sku}
+                    {skuState.skuVar && <span> / {skuState.skuVar}</span>}
+                  </div>
+                  {skuState.productName && (
+                    <div className="text-[11px] text-muted-foreground">{skuState.productName}</div>
+                  )}
+
+                  <div className="mt-1 space-y-0.5">
+                    {sortedSkuRows?.map((row) => (
+                      <button
+                        key={row.location_id}
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left hover:bg-muted/60"
+                        onClick={() => {
+                          if (!skuState.productId) return;
+                          window.location.href = `/warehouse/deduct?product_id=${encodeURIComponent(skuState.productId)}&location=${encodeURIComponent(row.location_code)}&reason=search`;
+                        }}
+                      >
+                        <span className="font-mono text-[11px]">{row.location_code}</span>
+                        <span className="font-semibold text-foreground">{row.quantity_cases} cases</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -162,7 +229,9 @@ export function WarehouseSearchShell() {
           {locState.ok === true && locState.rows && locState.rows.length > 0 && (
             <div className="rounded-md border px-3 py-2 text-xs">
               <p className="mb-1 font-medium">Contents at this location</p>
-              <div className="max-h-64 overflow-auto">
+
+              {/* Desktop table */}
+              <div className="hidden max-h-64 overflow-auto md:block">
                 <table className="w-full text-left text-[11px]">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
@@ -184,6 +253,25 @@ export function WarehouseSearchShell() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="space-y-2 md:hidden">
+                {locState.rows.map((row, idx) => (
+                  <div
+                    key={`${row.product_id}-${row.sku}-${idx}`}
+                    className="w-full rounded-md border bg-white px-3 py-2 text-[11px] shadow-sm"
+                  >
+                    <div className="font-mono text-[11px]">
+                      {row.sku}
+                      {row.sku_var && <span> / {row.sku_var}</span>}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{row.product_name}</div>
+                    <div className="mt-1 font-semibold text-[11px] text-foreground">
+                      Available: {row.quantity_cases} cases
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

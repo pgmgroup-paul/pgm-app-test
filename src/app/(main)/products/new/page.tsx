@@ -7,6 +7,22 @@ import { ImageField } from "../image-field";
 import { UpcField } from "../upc-field";
 import { NewProductErrors } from "./new-product-errors";
 
+// Convert a string to Title Case while preserving punctuation and spacing.
+// Example: 10" QUESADILLA MAKER ( RED) -> 10" Quesadilla Maker ( Red)
+function toTitleCasePreservePunctuation(value: string): string {
+  if (!value) return value;
+
+  return value
+    .split(" ")
+    .map((word) => {
+      if (word.length === 0) return word;
+      const first = word[0];
+      const rest = word.slice(1);
+      return first.toUpperCase() + rest.toLowerCase();
+    })
+    .join(" ");
+}
+
 async function createProduct(formData: FormData) {
   "use server";
 
@@ -21,7 +37,8 @@ async function createProduct(formData: FormData) {
   const sku = (formData.get("sku") || "").toString().trim();
   const skuVarRaw = (formData.get("sku_var") || "").toString().trim();
   const sku_var = skuVarRaw || null;
-  const productName = (formData.get("product_name") || "").toString().trim();
+  const rawProductName = (formData.get("product_name") || "").toString().trim();
+  const productName = toTitleCasePreservePunctuation(rawProductName);
   const category = (formData.get("category") || "").toString().trim();
   const upc = (formData.get("upc") || "").toString().trim();
   const image = (formData.get("image") || "").toString().trim();
@@ -88,10 +105,48 @@ async function createProduct(formData: FormData) {
     redirect("/products/new?error=unknown");
   }
 
-  redirect("/products");
+  // On success, stay on the same page and indicate success via search params.
+  redirect("/products/new?success=1");
 }
 
-export default async function NewProductPage() {
+async function loadDistinctCategories(): Promise<string[]> {
+  const { data, error } = await serverSupabase
+    .from("products")
+    .select("category")
+    .not("category", "is", null)
+    .order("category", { ascending: true });
+
+  if (error) {
+    console.error("Error loading distinct categories for /products/new", error);
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const categories: string[] = [];
+
+  for (const row of data || []) {
+    const cat = (row.category as string | null) || null;
+    if (!cat) continue;
+    if (!seen.has(cat)) {
+      seen.add(cat);
+      categories.push(cat);
+    }
+  }
+
+  return categories;
+}
+
+interface NewProductPageProps {
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+  }>;
+}
+
+export default async function NewProductPage({ searchParams }: NewProductPageProps) {
+  const params = await searchParams;
+  const success = params.success === "1";
+
   const current = await getCurrentUserProfile();
   const isAllowed =
     current && (current.role === "admin" || (current.role === "staff" && current.staff_type === "operations"));
@@ -99,6 +154,8 @@ export default async function NewProductPage() {
   if (!isAllowed) {
     redirect("/unauthorized");
   }
+
+  const categories = await loadDistinctCategories();
 
   return (
     <div className="max-w-xl space-y-6 p-6">
@@ -153,13 +210,22 @@ export default async function NewProductPage() {
             <label htmlFor="category" className="font-medium">
               Category
             </label>
-            <input
+            <select
               id="category"
               name="category"
-              type="text"
               required
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Select a category
+              </option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
 
           <UpcField />
@@ -172,6 +238,8 @@ export default async function NewProductPage() {
           >
             Save product
           </button>
+
+          {success && <p className="mt-2 text-emerald-700 text-xs">Product created successfully</p>}
         </form>
       </div>
     </div>

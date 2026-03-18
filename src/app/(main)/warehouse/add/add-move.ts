@@ -43,8 +43,8 @@ export async function handleAddMove(_prev: AddMoveState, formData: FormData): Pr
     return { ok: false, error: "Quantity must be a positive number" };
   }
 
-  if (unit !== "cases" && unit !== "pallets") {
-    return { ok: false, error: "Unit must be Cases or Pallets" };
+  if (unit !== "cases" && unit !== "pallets" && unit !== "pieces") {
+    return { ok: false, error: "Unit must be Cases, Pallets, or Pieces" };
   }
 
   if (!warehouseName) {
@@ -63,7 +63,7 @@ export async function handleAddMove(_prev: AddMoveState, formData: FormData): Pr
     return { ok: false, error: "Please select a container" };
   }
 
-  if (sourceType !== "container" && !sourceRef) {
+  if (sourceType !== "container" && sourceType !== "old_warehouse" && !sourceRef) {
     return { ok: false, error: "Please provide source details" };
   }
 

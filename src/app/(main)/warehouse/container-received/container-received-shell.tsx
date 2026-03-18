@@ -71,37 +71,57 @@ export function ContainerReceivedShell() {
         )}
 
         {containersState.containers && containersState.containers.length > 0 && (
-          <div className="max-h-48 overflow-auto rounded-md border">
-            <table className="w-full text-left text-[11px]">
-              <thead className="border-b text-[11px] text-muted-foreground">
-                <tr>
-                  <th className="w-6 py-1 pr-2" />
-                  <th className="py-1 pr-2">Code</th>
-                  <th className="py-1 pr-2">ETA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {containersState.containers.map((c) => (
-                  <tr key={c.id} className="border-b last:border-none">
-                    <td className="py-1 pr-2 text-right align-top">
-                      <input
-                        type="radio"
-                        name="container_id_select"
-                        value={c.id}
-                        className="h-3 w-3"
-                        checked={selectedContainerId === c.id}
-                        onChange={() => handleSelectContainer(c.id)}
-                      />
-                    </td>
-                    <td className="py-1 pr-2 font-mono text-[11px]">{c.code}</td>
-                    <td className="py-1 pr-2 text-[10px] text-muted-foreground">
-                      {c.eta ? new Date(c.eta).toLocaleDateString() : "-"}
-                    </td>
+          <>
+            {/* Desktop table */}
+            <div className="hidden max-h-48 overflow-auto rounded-md border md:block">
+              <table className="w-full text-left text-[11px]">
+                <thead className="border-b text-[11px] text-muted-foreground">
+                  <tr>
+                    <th className="w-6 py-1 pr-2" />
+                    <th className="py-1 pr-2">Code</th>
+                    <th className="py-1 pr-2">ETA</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {containersState.containers.map((c) => (
+                    <tr key={c.id} className="border-b last:border-none">
+                      <td className="py-1 pr-2 text-right align-top">
+                        <input
+                          type="radio"
+                          name="container_id_select"
+                          value={c.id}
+                          className="h-3 w-3"
+                          checked={selectedContainerId === c.id}
+                          onChange={() => handleSelectContainer(c.id)}
+                        />
+                      </td>
+                      <td className="py-1 pr-2 font-mono text-[11px]">{c.code}</td>
+                      <td className="py-1 pr-2 text-[10px] text-muted-foreground">
+                        {c.eta ? new Date(c.eta).toLocaleDateString() : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-2 md:hidden">
+              {containersState.containers.map((c) => (
+                <a
+                  key={c.id}
+                  href={`/warehouse/receiving/${c.id}/pallet-config`}
+                  className="block rounded-lg border bg-white p-3 shadow-sm"
+                >
+                  <div className="font-mono font-semibold text-sm">{c.code}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    ETA: {c.eta ? new Date(c.eta).toLocaleDateString() : "-"}
+                  </div>
+                  <div className="mt-1 text-[11px]">Status: Received</div>
+                </a>
+              ))}
+            </div>
+          </>
         )}
 
         <form action={handleLoadContents} className="pt-2">
@@ -140,6 +160,13 @@ export function ContainerReceivedShell() {
                 <tbody>
                   {contentsState.rows.map((row) => {
                     const discrepancy = row.discrepancy ?? null;
+                    const isUnder = discrepancy !== null && discrepancy < 0;
+                    const formattedDiscrepancy =
+                      discrepancy === null || discrepancy === 0
+                        ? "-"
+                        : discrepancy > 0
+                          ? `+${discrepancy}`
+                          : `${discrepancy}`;
                     return (
                       <tr key={row.product_id} className="border-b last:border-none">
                         <td className="py-1 pr-2 font-mono text-[11px]">{row.sku}</td>
@@ -150,12 +177,9 @@ export function ContainerReceivedShell() {
                         <td className="py-1 pr-2 text-right text-[11px]">{row.received_cases}</td>
                         <td className="py-1 pr-2 text-right text-[11px]">{row.loose_pieces_received ?? "-"}</td>
                         <td
-                          className={
-                            "py-1 pr-2 text-right text-[11px]" +
-                            (discrepancy !== null && discrepancy !== 0 ? "font-semibold text-destructive" : "")
-                          }
+                          className={`py-1 pr-2 text-right text-[11px]${isUnder ? "font-semibold text-destructive" : ""}`}
                         >
-                          {discrepancy === null || discrepancy === 0 ? "-" : discrepancy}
+                          {formattedDiscrepancy}
                         </td>
                       </tr>
                     );

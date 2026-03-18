@@ -103,7 +103,7 @@ export function DemandShell({ loadDemand, initialState, initialSku, initialVar }
                 <div>
                   <div className="text-muted-foreground">Balance</div>
                   <div
-                    className={"font-mono text-sm" + ((state.balance ?? 0) < 0 ? "font-semibold text-destructive" : "")}
+                    className={`font-mono text-sm${(state.balance ?? 0) < 0 ? "font-semibold text-destructive" : ""}`}
                   >
                     {state.balance ?? 0} units
                   </div>

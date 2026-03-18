@@ -27,10 +27,7 @@ export default async function ContainerShipmentEventsSection({
   const events = (data || null) as any | null;
 
   return (
-    <form
-      action={saveShipmentEventsFormAction}
-      className="space-y-3 rounded-md border px-3 py-3 text-xs"
-    >
+    <form action={saveShipmentEventsFormAction} className="space-y-3 rounded-md border px-3 py-3 text-xs">
       <input type="hidden" name="shipment_container_id" value={shipmentContainerId} />
 
       {/* ISF block */}

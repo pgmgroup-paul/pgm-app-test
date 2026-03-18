@@ -15,9 +15,10 @@ interface ProductRow {
 
 interface ProductsTableProps {
   products: ProductRow[];
+  deleteProductAction: (formData: FormData) => void | Promise<void>;
 }
 
-export function AdminProductsTable({ products }: ProductsTableProps) {
+export function AdminProductsTable({ products, deleteProductAction }: ProductsTableProps) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | "">("");
   const [sortKey, setSortKey] = useState<keyof ProductRow | "created_at">("product_name");
@@ -155,6 +156,20 @@ export function AdminProductsTable({ products }: ProductsTableProps) {
                     <a href={`/products/${item.id}/edit`} className="text-muted-foreground hover:underline">
                       View details
                     </a>
+                    <form
+                      action={deleteProductAction}
+                      className="inline"
+                      onSubmit={(e) => {
+                        // Confirmation dialog before soft delete
+                        const ok = window.confirm("Are you sure you want to delete this product?");
+                        if (!ok) e.preventDefault();
+                      }}
+                    >
+                      <input type="hidden" name="product_id" value={item.id} />
+                      <button type="submit" className="text-destructive hover:underline">
+                        Delete
+                      </button>
+                    </form>
                   </td>
                 </tr>
               );

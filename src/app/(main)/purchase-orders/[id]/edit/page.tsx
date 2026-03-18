@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 
 import { serverSupabase } from "@/lib/serverSupabase";
@@ -199,7 +200,11 @@ export default async function EditPurchaseOrderPage({
 
               if (updError) {
                 console.error("Error updating PO status", updError);
+                return;
               }
+
+              // Ensure the page reflects the new status immediately after saving.
+              revalidatePath(`/purchase-orders/${idFromForm}/edit`);
             }}
             className="flex items-center gap-2 text-[11px]"
           >

@@ -149,7 +149,7 @@ export default async function WarehouseReceivingPalletConfigPage({ params }: Pag
           <div className="font-medium text-[11px]">Products in this container</div>
           <a
             href={`/warehouse/receiving/${containerId}/contents`}
-            className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] hover:bg-muted"
+            className="inline-flex w-full items-center justify-center rounded-md border px-2 py-1 text-[11px] hover:bg-muted md:w-auto md:px-2 md:py-0.5 md:text-[10px]"
           >
             View contents
           </a>
@@ -158,58 +158,101 @@ export default async function WarehouseReceivingPalletConfigPage({ params }: Pag
         {rows.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">No products found for this container.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[11px]">
-              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-2 pl-3">SKU/Var</th>
-                  <th className="px-2 py-1">Product name</th>
-                  <th className="px-2 py-1 text-right">Cartons per layer</th>
-                  <th className="px-2 py-1 text-right">Number of layers</th>
-                  <th className="px-2 py-1 text-right">Cartons per pallet</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const hasPalletConfig =
-                    row.cartons_per_layer != null || row.number_of_layers != null || row.cartons_per_pallet != null;
+          <>
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-[11px]">
+                <thead className="border-b bg-muted text-[11px] text-muted-foreground">
+                  <tr>
+                    <th className="py-1 pr-2 pl-3">SKU/Var</th>
+                    <th className="px-2 py-1">Product name</th>
+                    <th className="px-2 py-1 text-right">Cartons per layer</th>
+                    <th className="px-2 py-1 text-right">Number of layers</th>
+                    <th className="px-2 py-1 text-right">Cartons per pallet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const hasPalletConfig =
+                      row.cartons_per_layer != null || row.number_of_layers != null || row.cartons_per_pallet != null;
 
-                  const skuQuery = encodeURIComponent(row.sku);
-                  const variantQuery = row.sku_var ? encodeURIComponent(row.sku_var) : "";
-                  const dimsHref = `/warehouse/dimensions?sku=${skuQuery}${variantQuery ? `&variant=${variantQuery}` : ""}`;
+                    const skuQuery = encodeURIComponent(row.sku);
+                    const variantQuery = row.sku_var ? encodeURIComponent(row.sku_var) : "";
+                    const dimsHref = `/warehouse/dimensions?sku=${skuQuery}${variantQuery ? `&variant=${variantQuery}` : ""}`;
 
-                  return (
-                    <tr key={row.product_id} className="border-b last:border-none">
-                      <td className="py-1 pr-2 pl-3 font-mono text-[11px]">
-                        {row.sku}
-                        {row.sku_var ? `-${row.sku_var}` : ""}
-                      </td>
-                      <td className="px-2 py-1 text-[11px]">{row.product_name}</td>
-                      <td className="px-2 py-1 text-right text-[11px]">
-                        {row.cartons_per_layer != null ? row.cartons_per_layer : "-"}
-                      </td>
-                      <td className="px-2 py-1 text-right text-[11px]">
-                        {row.number_of_layers != null ? row.number_of_layers : "-"}
-                      </td>
-                      <td className="px-2 py-1 text-right text-[11px]">
-                        {hasPalletConfig ? (
-                          row.cartons_per_pallet != null ? (
-                            row.cartons_per_pallet
+                    return (
+                      <tr key={row.product_id} className="border-b last:border-none">
+                        <td className="py-1 pr-2 pl-3 font-mono text-[11px]">
+                          {row.sku}
+                          {row.sku_var ? `-${row.sku_var}` : ""}
+                        </td>
+                        <td className="px-2 py-1 text-[11px]">{row.product_name}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">
+                          {row.cartons_per_layer != null ? row.cartons_per_layer : "-"}
+                        </td>
+                        <td className="px-2 py-1 text-right text-[11px]">
+                          {row.number_of_layers != null ? row.number_of_layers : "-"}
+                        </td>
+                        <td className="px-2 py-1 text-right text-[11px]">
+                          {hasPalletConfig ? (
+                            row.cartons_per_pallet != null ? (
+                              row.cartons_per_pallet
+                            ) : (
+                              "-"
+                            )
                           ) : (
-                            "-"
-                          )
-                        ) : (
-                          <a href={dimsHref} className="font-medium text-[11px] text-primary hover:underline">
-                            Enter pallet build
-                          </a>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            <a href={dimsHref} className="font-medium text-[11px] text-primary hover:underline">
+                              Enter pallet build
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile product cards */}
+            <div className="space-y-2 md:hidden">
+              {rows.map((row) => {
+                const hasPalletConfig =
+                  row.cartons_per_layer != null || row.number_of_layers != null || row.cartons_per_pallet != null;
+
+                const skuQuery = encodeURIComponent(row.sku);
+                const variantQuery = row.sku_var ? encodeURIComponent(row.sku_var) : "";
+                const dimsHref = `/warehouse/dimensions?sku=${skuQuery}${variantQuery ? `&variant=${variantQuery}` : ""}&from=pallet-config`;
+
+                return (
+                  <div key={row.product_id} className="rounded-lg border bg-white p-3 shadow-sm">
+                    <div className="font-mono font-semibold text-sm">
+                      {row.sku}
+                      {row.sku_var ? `-${row.sku_var}` : ""}
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">{row.product_name}</div>
+
+                    {hasPalletConfig ? (
+                      <div className="mt-2 space-y-1 text-[11px]">
+                        <div>Cartons per layer: {row.cartons_per_layer ?? "-"}</div>
+                        <div>Layers: {row.number_of_layers ?? "-"}</div>
+                        <div>Cartons per pallet: {row.cartons_per_pallet ?? "-"}</div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 space-y-1 text-[11px]">
+                        <div className="text-destructive">&#9888; No pallet configuration</div>
+                        <a
+                          href={dimsHref}
+                          className="mt-1 inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+                        >
+                          Enter pallet build
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

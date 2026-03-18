@@ -217,7 +217,7 @@ export default async function ShipmentContainerPage({
   searchParams,
 }: {
   params: Promise<{ id: string; containerId: string }>;
-  searchParams: Promise<{ po_number?: string; error?: string }>;
+  searchParams: Promise<{ po_number?: string; error?: string; success?: string }>;
 }) {
   const profile = await getCurrentUserProfile();
 
@@ -226,7 +226,8 @@ export default async function ShipmentContainerPage({
   }
 
   const { id: shipmentId, containerId } = await params;
-  const { po_number, error } = await searchParams;
+  const { po_number, error, success } = await searchParams;
+  const containerUpdateSuccess = success === "container-updated";
 
   // Load open purchase orders for the PO dropdown
   const { data: openPos, error: poError } = await serverSupabase
@@ -592,9 +593,11 @@ export default async function ShipmentContainerPage({
 
                   if (updError) {
                     console.error("Error updating shipment container", updError);
+                    redirect(`/shipments/${shipmentId}/containers/${containerIdFromForm}`);
                   }
 
-                  redirect(`/shipments/${shipmentId}/containers/${containerIdFromForm}`);
+                  // On success, stay on the same page and surface a success flag via search params.
+                  redirect(`/shipments/${shipmentId}/containers/${containerIdFromForm}?success=container-updated`);
                 }}
                 className="grid grid-cols-1 gap-3 sm:grid-cols-5"
               >
@@ -655,13 +658,14 @@ export default async function ShipmentContainerPage({
                     <option value="returned">Returned</option>
                   </select>
                 </div>
-                <div className="flex items-end">
+                <div className="flex flex-col items-end gap-1">
                   <button
                     type="submit"
                     className="inline-flex w-full items-center justify-center rounded-md border px-3 py-1.5 font-medium text-[11px] hover:bg-muted"
                   >
                     Save container
                   </button>
+                  {containerUpdateSuccess && <p className="text-[11px] text-emerald-700">Container updated</p>}
                 </div>
               </form>
             </div>
@@ -815,7 +819,7 @@ export default async function ShipmentContainerPage({
                         <tr>
                           <th className="py-1 pr-2 pl-3">SKU</th>
                           <th className="px-2 py-1">Description</th>
-                          <th className="px-2 py-1 text-right">Ordered (cases)</th>
+                          <th className="px-2 py-1 text-right">Ordered (units)</th>
                           <th className="px-2 py-1 text-right">Shipped (units)</th>
                           <th className="px-2 py-1 text-right">Received (units)</th>
                           <th className="px-2 py-1 text-right">Units per case</th>

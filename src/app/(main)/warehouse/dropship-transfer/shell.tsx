@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { type DropshipSaveState, saveDropshipTransfer } from "./save-transfer";
 import { type DropshipSourcesState, loadDropshipSources } from "./sources-load";
@@ -13,6 +13,21 @@ export function DropshipTransferShell() {
   const [saveState, saveAction] = useActionState<DropshipSaveState, FormData>(saveDropshipTransfer, { ok: null });
 
   const [sourceType, setSourceType] = useState<"container" | "order_leftover" | "inventory">("container");
+  const [selectedContainerId, setSelectedContainerId] = useState<string | undefined>(undefined);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | undefined>(undefined);
+
+  const quantityRef = useRef<HTMLInputElement | null>(null);
+
+  const hasSelection =
+    sourceType === "inventory" ||
+    (sourceType === "container" && !!selectedContainerId) ||
+    (sourceType === "order_leftover" && !!selectedShipmentId);
+
+  useEffect(() => {
+    if (!hasSelection) return;
+    if (!quantityRef.current) return;
+    quantityRef.current.focus();
+  }, [hasSelection]);
 
   return (
     <div className="space-y-4">
@@ -98,25 +113,54 @@ export function DropshipTransferShell() {
             <div className="space-y-1 border-t pt-2 text-xs">
               <p className="font-medium">Containers (status = received)</p>
               <div className="max-h-40 overflow-auto rounded-md border">
-                <table className="w-full text-left text-[11px]">
+                {/* Desktop table */}
+                <table className="hidden w-full text-left text-[11px] md:table">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
-                      <th className="w-6 py-1 pr-2" />
                       <th className="py-1 pr-2">Container</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {state.containers.map((c) => (
-                      <tr key={c.id} className="border-b last:border-none">
-                        <td className="py-1 pr-2 text-right align-top">
-                          <input type="radio" name="source_container_id" value={c.id} className="h-3 w-3" />
-                        </td>
-                        <td className="py-1 pr-2 font-mono text-[11px]">{c.container_number}</td>
-                      </tr>
-                    ))}
+                    {state.containers.map((c) => {
+                      const isSelected = selectedContainerId === c.id;
+
+                      return (
+                        <tr
+                          key={c.id}
+                          className={`cursor-pointer border-b last:border-none ${isSelected ? "bg-primary/5" : ""}`}
+                          onClick={() => setSelectedContainerId(c.id)}
+                        >
+                          <td className="py-1 pr-2 font-mono text-[11px]">{c.container_number}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+
+                {/* Mobile cards */}
+                <div className="space-y-2 p-2 md:hidden">
+                  {state.containers.map((c) => {
+                    const isSelected = selectedContainerId === c.id;
+
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedContainerId(c.id)}
+                        className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-[11px] shadow-sm transition-colors ${
+                          isSelected ? "border-primary bg-primary/5" : "bg-white"
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <div className="font-mono text-[11px]">Container: {c.container_number}</div>
+                        </div>
+                        {isSelected && <span className="text-emerald-600 text-xs">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              <input type="hidden" name="source_container_id" value={selectedContainerId || ""} />
             </div>
           )}
 
@@ -124,27 +168,58 @@ export function DropshipTransferShell() {
             <div className="space-y-1 border-t pt-2 text-xs">
               <p className="font-medium">Shipments (processing) for this product</p>
               <div className="max-h-40 overflow-auto rounded-md border">
-                <table className="w-full text-left text-[11px]">
+                {/* Desktop table */}
+                <table className="hidden w-full text-left text-[11px] md:table">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
-                      <th className="w-6 py-1 pr-2" />
                       <th className="py-1 pr-2">Shipment</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {state.shipments.map((s) => (
-                      <tr key={s.id} className="border-b last:border-none">
-                        <td className="py-1 pr-2 text-right align-top">
-                          <input type="radio" name="source_shipment_id" value={s.id} className="h-3 w-3" />
-                        </td>
-                        <td className="py-1 pr-2 font-mono text-[11px]">
-                          {s.order_number}-{s.shipment_sequence}
-                        </td>
-                      </tr>
-                    ))}
+                    {state.shipments.map((s) => {
+                      const isSelected = selectedShipmentId === s.id;
+
+                      return (
+                        <tr
+                          key={s.id}
+                          className={`cursor-pointer border-b last:border-none ${isSelected ? "bg-primary/5" : ""}`}
+                          onClick={() => setSelectedShipmentId(s.id)}
+                        >
+                          <td className="py-1 pr-2 font-mono text-[11px]">
+                            {s.order_number}-{s.shipment_sequence}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+
+                {/* Mobile cards */}
+                <div className="space-y-2 p-2 md:hidden">
+                  {state.shipments.map((s) => {
+                    const isSelected = selectedShipmentId === s.id;
+
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSelectedShipmentId(s.id)}
+                        className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-[11px] shadow-sm transition-colors ${
+                          isSelected ? "border-primary bg-primary/5" : "bg-white"
+                        }`}
+                      >
+                        <div className="space-y-0.5">
+                          <div className="font-mono text-[11px]">
+                            {s.order_number}-{s.shipment_sequence}
+                          </div>
+                        </div>
+                        {isSelected && <span className="text-emerald-600 text-xs">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              <input type="hidden" name="source_shipment_id" value={selectedShipmentId || ""} />
             </div>
           )}
 
@@ -156,49 +231,57 @@ export function DropshipTransferShell() {
             <p className="text-[10px] text-muted-foreground">No processing shipments found containing this product.</p>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1 text-xs">
-              <label htmlFor="quantity" className="font-medium">
-                Quantity
-              </label>
-              <input
-                id="quantity"
-                name="quantity"
-                type="number"
-                min={0}
-                step={1}
-                className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
+          {hasSelection && (
+            <>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Transferring: <span className="font-semibold">{state.sku}</span>
+                {state.productName && <span className="">– {state.productName}</span>}
+              </p>
 
-            <div className="space-y-1 text-xs">
-              <label htmlFor="unit" className="font-medium">
-                Unit
-              </label>
-              <select
-                id="unit"
-                name="unit"
-                defaultValue="pieces"
-                className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1 text-xs">
+                  <label htmlFor="quantity" className="font-medium">
+                    Quantity
+                  </label>
+                  <input
+                    ref={quantityRef}
+                    id="quantity"
+                    name="quantity"
+                    type="number"
+                    min={0}
+                    step={1}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <label htmlFor="unit" className="font-medium">
+                    Unit
+                  </label>
+                  <select
+                    id="unit"
+                    name="unit"
+                    defaultValue="pieces"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="pieces">Pieces</option>
+                    {sourceType === "container" && <option value="cases">Cases</option>}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 font-medium text-[12px] text-primary-foreground hover:bg-primary/90"
               >
-                <option value="pieces">Pieces</option>
-                {sourceType === "container" && <option value="cases">Cases</option>}
-              </select>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
-          >
-            Save dropship transfer
-          </button>
+                Save dropship transfer
+              </button>
+            </>
+          )}
 
           {saveState.ok === false && saveState.error && <p className="text-destructive text-xs">{saveState.error}</p>}
 
-          {saveState.ok === true && saveState.message && (
-            <p className="text-emerald-700 text-xs">{saveState.message}</p>
-          )}
+          {saveState.ok === true && <p className="text-emerald-700 text-xs">✓ Transfer recorded</p>}
         </form>
       )}
     </div>

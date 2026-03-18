@@ -13,7 +13,7 @@ interface ShellProps {
 }
 
 export function ConsolidateTransfersShell({ warehouses, transferAction }: ShellProps) {
-  const [activeTab, setActiveTab] = useState<"consolidate" | "transfer">("transfer");
+  const [activeTab, setActiveTab] = useState<"consolidate" | "transfer">("consolidate");
 
   return (
     <div className="space-y-4">

@@ -4,6 +4,7 @@ interface WarehouseDimensionsPageProps {
   searchParams: Promise<{
     sku?: string;
     variant?: string;
+    from?: string;
   }>;
 }
 
@@ -11,6 +12,7 @@ export default async function WarehouseDimensionsPage({ searchParams }: Warehous
   const params = await searchParams;
   const initialSku = params.sku;
   const initialVariant = params.variant;
+  const from = params.from;
 
   return (
     <div className="space-y-4">
@@ -21,7 +23,7 @@ export default async function WarehouseDimensionsPage({ searchParams }: Warehous
         </p>
       </div>
 
-      <DimensionsShell initialSku={initialSku} initialVariant={initialVariant} />
+      <DimensionsShell initialSku={initialSku} initialVariant={initialVariant} from={from} />
     </div>
   );
 }

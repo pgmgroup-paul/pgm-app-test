@@ -1,25 +1,128 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 
 import { type DeductMoveState, handleDeductMove } from "./deduct-move";
 import { handleUndoDeduct, type UndoDeductState } from "./deduct-undo";
 import { type DeductLocationState, loadDeductLocations } from "./locations-load";
+import { resolveProductById } from "./resolve-product";
 
 const initialState: DeductLocationState = { ok: null };
 
-export function DeductShell() {
+export function DeductShell({
+  productId,
+  shipmentId,
+  locationCode,
+  reason: initialReason,
+  isFromOrder,
+}: {
+  productId?: string;
+  shipmentId?: string;
+  locationCode?: string;
+  reason?: string;
+  isFromOrder?: boolean;
+}) {
+  const _isFromOrder = !!isFromOrder;
   const [state, formAction] = useActionState<DeductLocationState, FormData>(loadDeductLocations, initialState);
 
   const [moveState, moveAction] = useActionState<DeductMoveState, FormData>(handleDeductMove, { ok: null });
 
   const [undoState, undoAction] = useActionState<UndoDeductState, FormData>(handleUndoDeduct, { ok: null });
 
-  const [reason, setReason] = useState("dispose_damaged");
+  // Local reason state (optional initial value from props)
+  const [reason, setReason] = useState(initialReason || "dispose_damaged");
+
+  // Local selections for auto-prefill + radios
+  const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<string | undefined>(undefined);
+
+  // Controlled inputs for SKU / variant and ref for quantity
+  const [skuValue, setSkuValue] = useState("");
+  const [skuVarValue, setSkuVarValue] = useState("");
+  const quantityInputRef = useRef<HTMLInputElement | null>(null);
+
+  const autoInitRef = useRef(false);
+  const autoScrollRef = useRef(false);
+
+  // If productId is present, resolve SKU and auto-run the existing load locations logic
+  useEffect(() => {
+    if (autoInitRef.current) return;
+    if (!productId) return;
+
+    autoInitRef.current = true;
+
+    (async () => {
+      const res = await resolveProductById(productId);
+      if (!res.ok || !res.sku) {
+        return;
+      }
+
+      setSkuValue(res.sku);
+      setSkuVarValue(res.skuVar || "");
+
+      const fd = new FormData();
+      fd.append("sku", res.sku);
+      if (res.skuVar) {
+        fd.append("sku_var", res.skuVar);
+      }
+
+      // Run the existing loadLocations action inside a transition, as if the form had been submitted
+      startTransition(() => {
+        formAction(fd);
+      });
+
+      // If deep-linked with reason, prefer "order" as requested
+      if (initialReason === "order") {
+        setReason("order");
+      }
+    })();
+  }, [productId, initialReason, formAction]);
+
+  // After locations & shipments load, auto-select location/shipment
+  useEffect(() => {
+    if (state.ok !== true) return;
+
+    // Select location based on locationCode
+    if (!selectedLocationId && locationCode && state.rows && state.rows.length > 0) {
+      const match = state.rows.find((r) => r.location_code === locationCode);
+      if (match) {
+        setSelectedLocationId(match.location_id);
+      }
+    }
+
+    // Select shipment based on shipmentId when reason is order
+    if (reason === "order" && shipmentId && !selectedShipmentId && state.shipments && state.shipments.length > 0) {
+      const matchShipment = state.shipments.find((s) => s.id === shipmentId);
+      if (matchShipment) {
+        setSelectedShipmentId(matchShipment.id);
+      }
+    }
+  }, [state, locationCode, shipmentId, selectedLocationId, selectedShipmentId, reason]);
+
+  // On mobile deep-links, scroll quantity into view and focus once everything is ready
+  useEffect(() => {
+    if (autoScrollRef.current) return;
+    if (typeof window === "undefined") return;
+
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+
+    if (state.ok !== true) return;
+    if (!skuValue) return;
+    if (!selectedLocationId) return;
+    if (reason === "order" && !selectedShipmentId) return;
+    if (!quantityInputRef.current) return;
+
+    autoScrollRef.current = true;
+
+    quantityInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    quantityInputRef.current.focus();
+  }, [state.ok, skuValue, selectedLocationId, selectedShipmentId, reason]);
 
   return (
     <div className="space-y-4">
       <form action={formAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
+        <input type="hidden" name="shipment_id" value={shipmentId || ""} />
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU
@@ -29,6 +132,8 @@ export function DeductShell() {
             name="sku"
             type="text"
             required
+            value={skuValue}
+            onChange={(e) => setSkuValue(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -42,6 +147,8 @@ export function DeductShell() {
             name="sku_var"
             type="text"
             placeholder="e.g. GREEN, 10oz, Large"
+            value={skuVarValue}
+            onChange={(e) => setSkuVarValue(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -69,7 +176,8 @@ export function DeductShell() {
           {/* keep track of which product is being deducted */}
           <input type="hidden" name="product_id" value={state.productId || ""} />
 
-          <div className="max-h-64 overflow-auto">
+          {/* Desktop table */}
+          <div className="hidden max-h-64 overflow-auto md:block">
             <table className="w-full text-left text-[11px]">
               <thead className="border-b text-[11px] text-muted-foreground">
                 <tr>
@@ -83,7 +191,14 @@ export function DeductShell() {
                 {state.rows.map((row) => (
                   <tr key={row.location_id} className="border-b last:border-none">
                     <td className="py-1 pr-2 text-right align-top">
-                      <input type="radio" name="deduct_location_id" value={row.location_id} className="h-3 w-3" />
+                      <input
+                        type="radio"
+                        name="deduct_location_id"
+                        value={row.location_id}
+                        className="h-3 w-3"
+                        checked={selectedLocationId === row.location_id}
+                        onChange={() => setSelectedLocationId(row.location_id)}
+                      />
                     </td>
                     <td className="py-1 pr-2 text-[11px]">{row.warehouse_name}</td>
                     <td className="py-1 pr-2 font-mono text-[11px]">{row.location_code}</td>
@@ -92,6 +207,30 @@ export function DeductShell() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile stacked list */}
+          <div className="space-y-1 md:hidden">
+            {state.rows.map((row) => {
+              const isSelected = selectedLocationId === row.location_id;
+
+              return (
+                <button
+                  key={row.location_id}
+                  type="button"
+                  onClick={() => setSelectedLocationId(row.location_id)}
+                  className={`flex w-full items-center justify-between rounded-md border px-2 py-2 text-[11px] shadow-sm transition-colors ${
+                    isSelected ? "border-primary bg-primary/5" : "bg-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-1 font-mono text-[11px]">
+                    {row.location_code}
+                    {isSelected && <span className="text-emerald-600">✓</span>}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{row.quantity_cases} cases</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="space-y-2 rounded-md border px-3 py-2 text-xs">
@@ -134,14 +273,21 @@ export function DeductShell() {
                         <th className="w-6 py-1 pr-2" />
                         <th className="py-1 pr-2">Shipment</th>
                         <th className="py-1 pr-2 text-right">Qty ordered (cases)</th>
-                        <th className="py-1 pr-2 text-right">Qty remaining (cases)</th>
+                        <th className="py-1 pr-2 text-right">Cases remaining to pick</th>
                       </tr>
                     </thead>
                     <tbody>
                       {state.shipments.map((s) => (
                         <tr key={s.id} className="border-b last:border-none">
                           <td className="py-1 pr-2 text-right align-top">
-                            <input type="radio" name="deduct_shipment_id" value={s.id} className="h-3 w-3" />
+                            <input
+                              type="radio"
+                              name="deduct_shipment_id"
+                              value={s.id}
+                              className="h-3 w-3"
+                              checked={selectedShipmentId === s.id}
+                              onChange={() => setSelectedShipmentId(s.id)}
+                            />
                           </td>
                           <td className="py-1 pr-2 font-mono text-[11px]">
                             {s.order_number}-{s.shipment_sequence}
@@ -183,6 +329,7 @@ export function DeductShell() {
                   Quantity to remove
                 </label>
                 <input
+                  ref={quantityInputRef}
                   id="deduct_quantity"
                   name="deduct_quantity"
                   type="number"

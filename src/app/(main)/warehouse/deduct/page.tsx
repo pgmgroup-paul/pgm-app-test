@@ -7,7 +7,12 @@ import { DeductShell } from "./deduct-shell";
 
 export const dynamic = "force-dynamic";
 
-export default async function WarehouseDeductPage() {
+export default async function WarehouseDeductPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
   const profile = await getCurrentUserProfile();
 
   if (!profile) {
@@ -18,6 +23,12 @@ export default async function WarehouseDeductPage() {
 
   const { data: warehouses } = await supabase.from("warehouses").select("id, name").order("name", { ascending: true });
 
+  const productIdParam = (sp?.product_id as string | undefined) ?? undefined;
+  const shipmentIdParam = (sp?.shipment_id as string | undefined) ?? undefined;
+  const locationParam = (sp?.location as string | undefined) ?? undefined;
+  const reasonParam = (sp?.reason as string | undefined) ?? undefined;
+  const isFromOrder = (sp?.from as string | undefined) === "order";
+
   return (
     <div className="max-w-xl space-y-4 p-6">
       <div className="space-y-1">
@@ -27,7 +38,13 @@ export default async function WarehouseDeductPage() {
         </p>
       </div>
 
-      <DeductShell />
+      <DeductShell
+        productId={productIdParam}
+        shipmentId={shipmentIdParam}
+        locationCode={locationParam}
+        reason={reasonParam}
+        isFromOrder={isFromOrder}
+      />
     </div>
   );
 }

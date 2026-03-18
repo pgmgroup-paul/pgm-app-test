@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 
 import { type DimensionsState, loadDimensions } from "./dimensions-load";
 import { type SaveDimensionsState, saveDimensions } from "./dimensions-save";
@@ -8,9 +8,10 @@ import { type SaveDimensionsState, saveDimensions } from "./dimensions-save";
 interface DimensionsShellProps {
   initialSku?: string;
   initialVariant?: string;
+  from?: string;
 }
 
-export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellProps) {
+export function DimensionsShell({ initialSku, initialVariant, from }: DimensionsShellProps) {
   const [loadState, loadAction] = useActionState<DimensionsState, FormData>(loadDimensions, {
     ok: null,
   });
@@ -36,6 +37,22 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
   const [saveState, saveAction] = useActionState<SaveDimensionsState, FormData>(saveDimensions, {
     ok: null,
   });
+
+  const cartonsPerLayerRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (from !== "pallet-config" && from !== "check-pallet") return;
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+    if (!cartonsPerLayerRef.current) return;
+
+    // Scroll into view and focus once dims are loaded
+    if (loadState.ok === true && loadState.productId) {
+      cartonsPerLayerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      cartonsPerLayerRef.current.focus();
+    }
+  }, [from, loadState.ok, loadState.productId]);
 
   return (
     <div className="space-y-4">
@@ -101,7 +118,10 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
           {/* Case dimensions */}
           <div className="space-y-2">
             <p className="font-medium">Case dimensions</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            <p className="text-[10px] text-muted-foreground">
+              All dimensions are in inches (in) and weight in pounds (lb).
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <label htmlFor="case_length" className="font-medium">
                   Length
@@ -141,22 +161,9 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
                   className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
-              <div className="space-y-1">
-                <label htmlFor="case_uom_length" className="font-medium">
-                  Length UOM (default in)
-                </label>
-                <input
-                  id="case_uom_length"
-                  name="case_uom_length"
-                  type="text"
-                  defaultValue={loadState.caseDims?.uom_length ?? "in"}
-                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  readOnly
-                />
-              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <label htmlFor="case_weight" className="font-medium">
                   Weight
@@ -168,19 +175,6 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
                   step="any"
                   defaultValue={loadState.caseDims?.weight ?? ""}
                   className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="case_uom_weight" className="font-medium">
-                  Weight UOM (default lb)
-                </label>
-                <input
-                  id="case_uom_weight"
-                  name="case_uom_weight"
-                  type="text"
-                  defaultValue={loadState.caseDims?.uom_weight ?? "lb"}
-                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  readOnly
                 />
               </div>
               <div className="space-y-1">
@@ -203,7 +197,7 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
           {/* Pallet dimensions */}
           <div className="space-y-2">
             <p className="font-medium">Pallet dimensions</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <label htmlFor="pallet_length" className="font-medium">
                   Length
@@ -243,22 +237,9 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
                   className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
-              <div className="space-y-1">
-                <label htmlFor="pallet_uom_length" className="font-medium">
-                  Length UOM (default in)
-                </label>
-                <input
-                  id="pallet_uom_length"
-                  name="pallet_uom_length"
-                  type="text"
-                  defaultValue={loadState.palletDims?.uom_length ?? "in"}
-                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  readOnly
-                />
-              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <label htmlFor="pallet_weight" className="font-medium">
                   Weight (calculated)
@@ -275,19 +256,6 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
                   Cartons per pallet × case weight + 50 lb for pallet.
                 </p>
               </div>
-              <div className="space-y-1">
-                <label htmlFor="pallet_uom_weight" className="font-medium">
-                  Weight UOM (default lb)
-                </label>
-                <input
-                  id="pallet_uom_weight"
-                  name="pallet_uom_weight"
-                  type="text"
-                  defaultValue={loadState.palletDims?.uom_weight ?? "lb"}
-                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  readOnly
-                />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -296,6 +264,7 @@ export function DimensionsShell({ initialSku, initialVariant }: DimensionsShellP
                   Cartons per layer
                 </label>
                 <input
+                  ref={cartonsPerLayerRef}
                   id="pallet_cartons_per_layer"
                   name="pallet_cartons_per_layer"
                   type="number"

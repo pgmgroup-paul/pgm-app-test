@@ -10,10 +10,24 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+async function softDeleteProduct(formData: FormData): Promise<void> {
+  "use server";
+
+  const id = (formData.get("product_id") || "").toString();
+  if (!id) return;
+
+  const { error } = await supabase.from("products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+
+  if (error) {
+    console.error("Error soft-deleting product", error);
+  }
+}
+
 async function getProducts() {
   const { data, error } = await supabase
     .from("products")
     .select("id, sku, sku_var, product_name, category, upc, image, created_at")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -33,7 +47,7 @@ export default async function ProductsPage() {
       {products.length === 0 ? (
         <p className="text-muted-foreground text-sm">No products found.</p>
       ) : (
-        <AdminProductsTable products={products as any} />
+        <AdminProductsTable products={products as any} deleteProductAction={softDeleteProduct} />
       )}
     </div>
   );

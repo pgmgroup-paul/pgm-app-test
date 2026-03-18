@@ -38,6 +38,7 @@ export async function loadDeductLocations(
 
   const sku = (formData.get("sku") || "").toString().trim();
   const skuVar = (formData.get("sku_var") || "").toString().trim();
+  const shipmentIdFromForm = (formData.get("shipment_id") || "").toString().trim();
 
   if (!sku) {
     return { ok: false, error: "SKU is required" };
@@ -103,7 +104,7 @@ export async function loadDeductLocations(
   }
 
   // Load shipments in processing status that include this product
-  const { data: shipmentsRaw, error: shipmentsError } = await supabase
+  let shipmentsQuery = supabase
     .from("so_shipments")
     .select(
       `id,
@@ -115,6 +116,12 @@ export async function loadDeductLocations(
     )
     .eq("status", "processing")
     .eq("so_shipment_lines.product_id", product.id);
+
+  if (shipmentIdFromForm) {
+    shipmentsQuery = shipmentsQuery.eq("id", shipmentIdFromForm);
+  }
+
+  const { data: shipmentsRaw, error: shipmentsError } = await shipmentsQuery;
 
   if (shipmentsError) {
     console.error("Error loading shipments for deduct", shipmentsError);
@@ -132,75 +139,71 @@ export async function loadDeductLocations(
     qty_remaining_cases: 0,
   }));
 
-  // Load quantity ordered per sales order for this product
+  // Load ordered & picked cases per shipment for this product (matches orders-to-process logic)
   if (shipments.length > 0) {
-    const soIds = Array.from(new Set(shipments.map((s) => s.sales_order_id)));
+    const shipmentIds = shipments.map((s) => s.id);
 
+    // 1) ordered_cases from so_shipment_lines for this shipment+product
     const { data: soLines, error: soLinesError } = await supabase
-      .from("sales_order_lines")
-      .select("sales_order_id, quantity_units")
+      .from("so_shipment_lines")
+      .select("so_shipment_id, quantity_shipped_units")
       .eq("product_id", product.id as string)
-      .in("sales_order_id", soIds);
+      .in("so_shipment_id", shipmentIds);
 
     if (soLinesError) {
-      console.error("Error loading sales_order_lines for deduct shipments", soLinesError);
+      console.error("Error loading so_shipment_lines for deduct shipments", soLinesError);
     }
 
-    const qtyBySo = new Map<string, number>();
+    const orderedCasesByShipment = new Map<string, number>();
     for (const row of soLines || []) {
-      const soId = (row as any).sales_order_id as string;
-      const qty = Number((row as any).quantity_units) || 0;
-      if (!soId || qty <= 0) continue;
-      qtyBySo.set(soId, (qtyBySo.get(soId) || 0) + qty);
+      const sid = (row as any).so_shipment_id as string;
+      const qtyUnits = Number((row as any).quantity_shipped_units) || 0;
+      if (!sid || qtyUnits <= 0) continue;
+      const orderedCases = unitsPerCase > 0 ? qtyUnits / unitsPerCase : qtyUnits;
+      orderedCasesByShipment.set(sid, (orderedCasesByShipment.get(sid) || 0) + orderedCases);
     }
 
-    for (const s of shipments) {
-      s.qty_ordered_units = qtyBySo.get(s.sales_order_id) || 0;
-    }
-
-    // Load deducted quantities per order via inventory_movements.order_number
+    // 2) picked_cases from inventory_movements for this shipment+product with reason=order
     const orderNumbers = Array.from(new Set(shipments.map((s) => s.order_number).filter(Boolean)));
 
-    if (orderNumbers.length > 0) {
-      const { data: moves, error: movesError } = await supabase
-        .from("inventory_movements")
-        .select("order_number, product_id, quantity_units, movement_type")
-        .eq("product_id", product.id as string)
-        .in("order_number", orderNumbers)
-        .eq("movement_type", "deduct");
+    const { data: moves, error: movesError } = await supabase
+      .from("inventory_movements")
+      .select("order_number, product_id, quantity_cases, movement_type, reason")
+      .eq("product_id", product.id as string)
+      .in("order_number", orderNumbers)
+      .eq("movement_type", "deduct")
+      .eq("reason", "order");
 
-      if (movesError) {
-        console.error("Error loading inventory_movements for deduct shipments", movesError);
-      }
-
-      const deductedByOrder = new Map<string, number>();
-      for (const m of moves || []) {
-        const ord = (m as any).order_number as string;
-        const qty = Number((m as any).quantity_units) || 0;
-        if (!ord || qty <= 0) continue;
-        deductedByOrder.set(ord, (deductedByOrder.get(ord) || 0) + qty);
-      }
-
-      for (const s of shipments) {
-        const ordered = s.qty_ordered_units || 0;
-        const deducted = deductedByOrder.get(s.order_number) || 0;
-        const remaining = ordered - deducted;
-        s.qty_remaining_units = remaining > 0 ? remaining : 0;
-      }
+    if (movesError) {
+      console.error("Error loading inventory_movements for deduct shipments", movesError);
     }
 
-    // Convert units to cases for display
-    if (unitsPerCase > 0) {
-      for (const s of shipments) {
-        s.qty_ordered_cases = s.qty_ordered_units / unitsPerCase;
-        s.qty_remaining_cases = s.qty_remaining_units / unitsPerCase;
-      }
-    } else {
-      // Fallback: if we don't know units_per_case, treat units as cases
-      for (const s of shipments) {
-        s.qty_ordered_cases = s.qty_ordered_units;
-        s.qty_remaining_cases = s.qty_remaining_units;
-      }
+    const pickedCasesByOrder = new Map<string, number>();
+    for (const m of moves || []) {
+      const ord = (m as any).order_number as string;
+      const qtyCases = Number((m as any).quantity_cases) || 0;
+      if (!ord || qtyCases <= 0) continue;
+      pickedCasesByOrder.set(ord, (pickedCasesByOrder.get(ord) || 0) + qtyCases);
+    }
+
+    // 3) final cases_remaining = ordered_cases - picked_cases (order-scoped, same as orders page today)
+    for (const s of shipments) {
+      const orderedCases = orderedCasesByShipment.get(s.id) || 0;
+      const pickedCases = pickedCasesByOrder.get(s.order_number) || 0;
+      const remainingCases = Math.max(orderedCases - pickedCases, 0);
+
+      s.qty_ordered_units = unitsPerCase > 0 ? orderedCases * unitsPerCase : orderedCases;
+      s.qty_remaining_units = unitsPerCase > 0 ? remainingCases * unitsPerCase : remainingCases;
+      s.qty_ordered_cases = orderedCases;
+      s.qty_remaining_cases = remainingCases;
+
+      console.log("[deduct] cases_remaining_to_pick", {
+        shipment_id: s.id,
+        product_id: product.id as string,
+        ordered_cases: orderedCases,
+        picked_cases: pickedCases,
+        cases_remaining: remainingCases,
+      });
     }
   }
 

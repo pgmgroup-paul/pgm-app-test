@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 
+import { markShipmentReady } from "../mark-order-ready";
+
 export const dynamic = "force-dynamic";
 
 interface PageParams {
@@ -69,6 +71,15 @@ export default async function WarehouseOrderLocationsPage({ params }: PageParams
       <div className="space-y-1">
         <h1 className="font-semibold text-2xl tracking-tight">Order Locations</h1>
         <p className="text-muted-foreground text-sm">Warehouse picking locations for this sales order shipment.</p>
+        <p className="text-sm">
+          Order:{" "}
+          <span className="font-mono text-[13px]">
+            {soNumber}-{shipment.shipment_sequence}
+          </span>{" "}
+          <span className="ml-2 text-muted-foreground">
+            Ship date: {requestedShipDate ? new Date(requestedShipDate).toLocaleDateString() : "-"}
+          </span>
+        </p>
       </div>
 
       <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
@@ -124,7 +135,7 @@ async function loadShipmentProducts(shipmentId: string, orderNumber?: string) {
   // Load warehouse locations and case-pack info for each product in the shipment
   const productIds = Array.from(new Set(rows.map((r) => (r.product_id as string) || "").filter(Boolean)));
 
-  const locationsByProduct = new Map<string, { location_code: string; quantity: number }[]>();
+  const locationsByProduct = new Map<string, { location_code: string; quantity: number; available_cases: number }[]>();
   const unitsPerCaseByProduct = new Map<string, number>();
   const casesPickedByProduct = new Map<string, number>();
 
@@ -149,7 +160,7 @@ async function loadShipmentProducts(shipmentId: string, orderNumber?: string) {
       const qtyCases = Number((r as any).quantity_cases) || 0;
       if (!pid || !code || qtyCases <= 0) continue;
       const arr = locationsByProduct.get(pid) || [];
-      arr.push({ location_code: code, quantity: qtyCases });
+      arr.push({ location_code: code, quantity: qtyCases, available_cases: qtyCases });
       locationsByProduct.set(pid, arr);
     }
 
@@ -214,69 +225,187 @@ async function loadShipmentProducts(shipmentId: string, orderNumber?: string) {
 async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: string; orderNumber?: string }) {
   const rows = await loadShipmentProducts(shipmentId, orderNumber);
 
+  const totalItems = rows.length;
+  const pickedItems = rows.reduce((acc, row: any) => {
+    const qtyUnits = Number(row.quantity_shipped_units) || 0;
+    const unitsPerCase = Number((row as any).units_per_case) || 0;
+    const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+    const casesPicked = Number((row as any).cases_picked) || 0;
+    const casesRemaining = Math.max(casesRequired - casesPicked, 0);
+    return acc + (casesRemaining <= 0 ? 1 : 0);
+  }, 0);
+
   return (
     <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
       <div className="font-medium text-[11px]">Products in this shipment</div>
+
+      {/* Picking progress */}
+      {totalItems > 0 && (
+        <div className="mb-1 text-[11px]">
+          <span className="font-medium">Progress</span>{" "}
+          <span>
+            {pickedItems} / {totalItems} items picked
+          </span>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <p className="text-[11px] text-muted-foreground">No products have been allocated to this shipment yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[11px]">
-            <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-              <tr>
-                <th className="py-1 pr-2 pl-3">SKU/Var</th>
-                <th className="px-2 py-1">Product name</th>
-                <th className="px-2 py-1 text-right">Pieces requested</th>
-                <th className="px-2 py-1 text-right">Cases</th>
-                <th className="px-2 py-1 text-right">Cases remaining to pick</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row: any) => {
-                const p = row.products as any;
-                const sku = (p?.sku as string) || "";
-                const skuVar = (p?.sku_var as string) || null;
-                const productName = (p?.product_name as string) || "";
-                const qtyUnits = Number(row.quantity_shipped_units) || 0;
-                const unitsPerCase = Number((row as any).units_per_case) || 0;
-                const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
-                const casesPicked = Number((row as any).cases_picked) || 0;
-                const casesRemaining = Math.max(casesRequired - casesPicked, 0);
-                const locations: { location_code: string; quantity: number }[] = (row.locations as any[]) || [];
+        <>
+          {/* Desktop table */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-[11px]">
+              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-2 pl-3">SKU/Var</th>
+                  <th className="px-2 py-1">Product name</th>
+                  <th className="px-2 py-1 text-right">Pieces requested</th>
+                  <th className="px-2 py-1 text-right">Cases</th>
+                  <th className="px-2 py-1 text-right">Cases remaining to pick</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row: any) => {
+                  const p = row.products as any;
+                  const sku = (p?.sku as string) || "";
+                  const skuVar = (p?.sku_var as string) || null;
+                  const productName = (p?.product_name as string) || "";
+                  const qtyUnits = Number(row.quantity_shipped_units) || 0;
+                  const unitsPerCase = Number((row as any).units_per_case) || 0;
+                  const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+                  const casesPicked = Number((row as any).cases_picked) || 0;
+                  const casesRemaining = Math.max(casesRequired - casesPicked, 0);
+                  const locations: { location_code: string; quantity: number; available_cases: number }[] =
+                    (row.locations as any[]) || [];
+
+                  const canPickMore = casesRemaining > 0;
+
+                  return (
+                    <React.Fragment key={row.id as string}>
+                      <tr className="border-b last:border-none">
+                        <td className="py-1 pr-2 pl-3 font-mono text-[11px]">
+                          {sku}
+                          {skuVar ? `-${skuVar}` : ""}
+                        </td>
+                        <td className="px-2 py-1 text-[11px]">{productName}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">{qtyUnits}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">{casesRequired}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">{casesRemaining}</td>
+                      </tr>
+
+                      {locations.map((loc, idx) => (
+                        <tr
+                          key={`${row.id as string}-loc-${loc.location_code}-${idx}`}
+                          className="border-b last:border-none"
+                        >
+                          <td className="py-1 pr-2 pl-6 font-mono text-[11px] text-muted-foreground">
+                            {canPickMore ? (
+                              <a
+                                href={`/warehouse/deduct?product_id=${encodeURIComponent(row.product_id as string)}&shipment_id=${encodeURIComponent(shipmentId)}&location=${encodeURIComponent(loc.location_code)}&reason=order`}
+                                className="text-primary hover:underline"
+                              >
+                                {loc.location_code}
+                              </a>
+                            ) : (
+                              <span className="cursor-default text-muted-foreground">
+                                {loc.location_code}
+                                <span className="ml-1 align-middle text-[10px]">(Fully picked)</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1 text-[11px] text-muted-foreground">&nbsp;</td>
+                          <td className="px-2 py-1 text-right text-[11px] text-muted-foreground">&nbsp;</td>
+                          <td className="px-2 py-1 text-right text-[11px] text-muted-foreground">&nbsp;</td>
+                          <td className="px-2 py-1 text-right text-[11px] text-muted-foreground">{loc.quantity}</td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile pick cards */}
+          <div className="space-y-2 md:hidden">
+            {rows.map((row: any) => {
+              const p = row.products as any;
+              const sku = (p?.sku as string) || "";
+              const skuVar = (p?.sku_var as string) || null;
+              const productName = (p?.product_name as string) || "";
+              const qtyUnits = Number(row.quantity_shipped_units) || 0;
+              const unitsPerCase = Number((row as any).units_per_case) || 0;
+              const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+              const casesPicked = Number((row as any).cases_picked) || 0;
+              const casesRemaining = Math.max(casesRequired - casesPicked, 0);
+              const locations: { location_code: string; quantity: number; available_cases: number }[] =
+                (row.locations as any[]) || [];
+
+              const canPickMore = casesRemaining > 0;
+              const completed = !canPickMore;
+
+              return locations.map((loc, idx) => {
+                const lowStock = loc.available_cases < casesRemaining;
 
                 return (
-                  <React.Fragment key={row.id as string}>
-                    <tr className="border-b last:border-none">
-                      <td className="py-1 pr-2 pl-3 font-mono text-[11px]">
-                        {sku}
-                        {skuVar ? `-${skuVar}` : ""}
-                      </td>
-                      <td className="px-2 py-1 text-[11px]">{productName}</td>
-                      <td className="px-2 py-1 text-right text-[11px]">{qtyUnits}</td>
-                      <td className="px-2 py-1 text-right text-[11px]">{casesRequired}</td>
-                      <td className="px-2 py-1 text-right text-[11px]">{casesRemaining}</td>
-                    </tr>
+                  <div
+                    key={`${row.id as string}-card-${loc.location_code}-${idx}`}
+                    className="rounded-lg border bg-white p-3 shadow-sm"
+                  >
+                    <div className="font-mono font-semibold text-sm">
+                      {sku}
+                      {skuVar ? `-${skuVar}` : ""}
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">{productName}</div>
+                    <div className="mt-1 text-[11px]">
+                      Location: <span className="font-mono">{loc.location_code}</span>
+                    </div>
+                    <div className="mt-1 text-[11px]">
+                      Available:{" "}
+                      <span className={lowStock ? "font-medium text-red-600" : ""}>{loc.available_cases} cases</span>
+                      {lowStock && <span className="ml-1 align-middle text-[10px] text-red-600">(Low stock)</span>}
+                    </div>
+                    <div className="mt-1 text-[11px]">
+                      Cases remaining: {casesRemaining} {completed && <span className="text-emerald-600">✓</span>}
+                    </div>
 
-                    {locations.map((loc, idx) => (
-                      <tr
-                        key={`${row.id as string}-loc-${loc.location_code}-${idx}`}
-                        className="border-b last:border-none"
+                    {canPickMore ? (
+                      <a
+                        href={`/warehouse/deduct?product_id=${encodeURIComponent(
+                          row.product_id as string,
+                        )}&shipment_id=${encodeURIComponent(
+                          shipmentId,
+                        )}&location=${encodeURIComponent(loc.location_code)}&reason=order`}
+                        className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
                       >
-                        <td className="py-1 pr-2 pl-6 font-mono text-[11px] text-muted-foreground">
-                          {loc.location_code}
-                        </td>
-                        <td className="px-2 py-1 text-[11px] text-muted-foreground">&nbsp;</td>
-                        <td className="px-2 py-1 text-right text-[11px] text-muted-foreground">&nbsp;</td>
-                        <td className="px-2 py-1 text-right text-[11px] text-muted-foreground">&nbsp;</td>
-                        <td className="px-2 py-1 text-right text-[11px] text-muted-foreground">{loc.quantity}</td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
+                        Pick from this location
+                      </a>
+                    ) : (
+                      <div className="mt-2 text-center text-[11px] text-muted-foreground">✓ Picked</div>
+                    )}
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              });
+            })}
+          </div>
+
+          {/* Mark order Ready button */}
+          <form action={markShipmentReady} className="pt-3">
+            <input type="hidden" name="shipment_id" value={shipmentId} />
+            <button
+              type="submit"
+              disabled={pickedItems < totalItems}
+              className={`inline-flex items-center rounded-md px-3 py-1.5 font-medium text-[11px] transition-colors ${
+                pickedItems < totalItems
+                  ? "cursor-not-allowed bg-muted text-muted-foreground"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              }`}
+            >
+              Mark order Ready
+            </button>
+          </form>
+        </>
       )}
     </div>
   );

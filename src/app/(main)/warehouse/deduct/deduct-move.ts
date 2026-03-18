@@ -37,6 +37,76 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
     return { ok: false, error: "Quantity must be a positive number" };
   }
 
+  // Validation: do not allow picking more than remaining cases for this order/shipment
+  if (reason === "order" && shipmentId) {
+    const supabase = serverSupabase;
+
+    const { data: shipment, error: shipError } = await supabase
+      .from("so_shipments")
+      .select("id, sales_order_id, sales_orders!inner(order_number)")
+      .eq("id", shipmentId)
+      .maybeSingle();
+
+    if (!shipError && shipment) {
+      const so = (shipment as any).sales_orders as any;
+      const orderNumber = (so?.order_number as string) || "";
+
+      // Load total ordered (units) for this shipment+product
+      const { data: soLines, error: soLinesError } = await supabase
+        .from("so_shipment_lines")
+        .select("quantity_shipped_units")
+        .eq("so_shipment_id", shipmentId)
+        .eq("product_id", productId);
+
+      let totalOrderedUnits = 0;
+      if (!soLinesError) {
+        for (const row of soLines || []) {
+          totalOrderedUnits += Number((row as any).quantity_shipped_units) || 0;
+        }
+      }
+
+      // Load units_per_case
+      let unitsPerCase = 0;
+      const { data: dim, error: dimError } = await supabase
+        .from("product_dimensions")
+        .select("units_per, kind")
+        .eq("product_id", productId)
+        .eq("kind", "package")
+        .maybeSingle();
+
+      if (!dimError && dim && typeof (dim as any).units_per !== "undefined") {
+        const u = Number((dim as any).units_per) || 0;
+        if (u > 0) unitsPerCase = u;
+      }
+
+      const totalOrderedCases = unitsPerCase > 0 ? totalOrderedUnits / unitsPerCase : totalOrderedUnits;
+
+      // Load already picked (cases) for this order+product with reason=order
+      let alreadyPickedCases = 0;
+      if (orderNumber) {
+        const { data: moves, error: movesError } = await supabase
+          .from("inventory_movements")
+          .select("quantity_cases")
+          .eq("product_id", productId)
+          .eq("order_number", orderNumber)
+          .eq("movement_type", "deduct")
+          .eq("reason", "order");
+
+        if (!movesError) {
+          for (const m of moves || []) {
+            alreadyPickedCases += Number((m as any).quantity_cases) || 0;
+          }
+        }
+      }
+
+      const remainingCases = Math.max(totalOrderedCases - alreadyPickedCases, 0);
+
+      if (unit === "cases" && quantity > remainingCases) {
+        return { ok: false, error: "Cannot pick more than remaining cases for this order" };
+      }
+    }
+  }
+
   if (unit !== "cases" && unit !== "pallets") {
     return { ok: false, error: "Unit must be Cases or Pallets" };
   }
@@ -97,7 +167,7 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
 
   const warehouseName =
     (Array.isArray(locRow.warehouses)
-      ? ((locRow.warehouses[0]?.name as string) || "")
+      ? (locRow.warehouses[0]?.name as string) || ""
       : ((locRow as any).warehouses?.name as string) || "") || "";
   const locationCode = (locRow.code as string) || "";
 

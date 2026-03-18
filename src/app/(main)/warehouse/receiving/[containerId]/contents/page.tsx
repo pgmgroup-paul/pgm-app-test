@@ -57,7 +57,7 @@ export default function WarehouseReceivingContentsPage({ params }: { params: Pro
         </p>
       </div>
 
-      {/* Contents table */}
+      {/* Contents cards */}
       {contentsState.ok === true && contentsState.containerCode && (
         <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
           <p className="font-medium">
@@ -65,45 +65,40 @@ export default function WarehouseReceivingContentsPage({ params }: { params: Pro
           </p>
 
           {contentsState.rows && contentsState.rows.length > 0 ? (
-            <div className="max-h-64 overflow-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead className="border-b text-[11px] text-muted-foreground">
-                  <tr>
-                    <th className="py-1 pr-2">SKU</th>
-                    <th className="py-1 pr-2">Variant</th>
-                    <th className="py-1 pr-2">Product</th>
-                    <th className="py-1 pr-2 text-right">Quantity expected (pieces)</th>
-                    <th className="py-1 pr-2 text-right">Quantity received (pieces)</th>
-                    <th className="py-1 pr-2 text-right">Qty received (cases)</th>
-                    <th className="py-1 pr-2 text-right">Loose pieces received</th>
-                    <th className="py-1 pr-2 text-right">Discrepancy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {contentsState.rows.map((row) => {
-                    const discrepancy = row.discrepancy ?? null;
-                    return (
-                      <tr key={row.product_id} className="border-b last:border-none">
-                        <td className="py-1 pr-2 font-mono text-[11px]">{row.sku}</td>
-                        <td className="py-1 pr-2 text-[11px]">{row.sku_var}</td>
-                        <td className="py-1 pr-2 text-[11px]">{row.product_name}</td>
-                        <td className="py-1 pr-2 text-right text-[11px]">{row.expected_units}</td>
-                        <td className="py-1 pr-2 text-right text-[11px]">{row.received_units ?? "-"}</td>
-                        <td className="py-1 pr-2 text-right text-[11px]">{row.received_cases}</td>
-                        <td className="py-1 pr-2 text-right text-[11px]">{row.loose_pieces_received ?? "-"}</td>
-                        <td
-                          className={
-                            "py-1 pr-2 text-right text-[11px]" +
-                            (discrepancy !== null && discrepancy !== 0 ? "font-semibold text-destructive" : "")
-                          }
-                        >
-                          {discrepancy === null || discrepancy === 0 ? "-" : discrepancy}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-2">
+              {contentsState.rows.map((row) => {
+                const discrepancy = row.discrepancy ?? null;
+                const isUnder = discrepancy !== null && discrepancy < 0;
+                const formattedDiscrepancy =
+                  discrepancy === null || discrepancy === 0
+                    ? 0
+                    : discrepancy > 0
+                      ? `+${discrepancy}`
+                      : `${discrepancy}`;
+                const receivedUnits = row.received_units ?? 0;
+                const loosePieces = row.loose_pieces_received ?? 0;
+                const totalReceived = receivedUnits + loosePieces;
+                const matchesExpected = totalReceived === row.expected_units;
+
+                return (
+                  <div key={row.product_id} className="rounded-lg border bg-white p-3 text-[11px] shadow-sm">
+                    <div className="font-mono font-semibold text-sm">{row.sku}</div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">{row.product_name}</div>
+                    <div className="mt-2 space-y-1">
+                      <div>Expected: {row.expected_units} units</div>
+                      <div>Received: {row.received_units ?? "-"} units</div>
+                      <div>Loose: {row.loose_pieces_received ?? "-"}</div>
+                      <div className={matchesExpected ? "font-medium text-emerald-700" : ""}>
+                        Total received: {totalReceived} units
+                        {matchesExpected && <span className="ml-1">✓</span>}
+                      </div>
+                      <div className={isUnder ? "font-medium text-destructive" : ""}>
+                        Discrepancy: {formattedDiscrepancy}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground">
@@ -111,20 +106,20 @@ export default function WarehouseReceivingContentsPage({ params }: { params: Pro
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            <form action={handleReceive}>
+          <div className="sticky right-0 bottom-0 left-0 mt-4 flex flex-col gap-2 bg-background/80 pt-2 pb-1">
+            <form action={handleReceive} className="w-full">
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+                className="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
               >
                 Mark container as unloaded
               </button>
             </form>
 
-            <form action={handleUndo}>
+            <form action={handleUndo} className="w-full">
               <button
                 type="submit"
-                className="inline-flex items-center rounded-md border border-input border-dashed px-3 py-1.5 font-medium text-[11px] text-muted-foreground hover:bg-muted/40"
+                className="inline-flex w-full items-center justify-center rounded-md border border-input border-dashed px-3 py-2 font-medium text-[11px] text-muted-foreground hover:bg-muted/40"
               >
                 Undo receive
               </button>

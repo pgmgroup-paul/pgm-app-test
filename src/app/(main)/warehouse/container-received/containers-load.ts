@@ -23,6 +23,13 @@ export interface ContainerContentsRow {
   received_cases: number; // from inventory_movements
   loose_pieces_received: number | null; // from dropship_transfers
   discrepancy: number | null; // expected_units - (received_units + loose_pieces_received)
+  // Additional derived fields for downstream UIs (e.g. /warehouse/add)
+  units_per_case: number | null; // from product_dimensions.units_per
+  expected_cases: number | null; // expected_units / units_per_case
+  cartons_per_layer?: number | null; // pallet config
+  number_of_layers?: number | null; // pallet config
+  cartons_per_pallet?: number | null; // pallet config
+  remaining_cases?: number | null; // expected_cases - received_cases
 }
 
 export interface ContainerContentsState {
@@ -172,10 +179,10 @@ export async function loadContainerContents(
     loosePiecesMap.set(pid, (loosePiecesMap.get(pid) || 0) + qty);
   }
 
-  // Load units_per for received-units conversion
+  // Load units_per and pallet config for conversions and palletization
   const { data: dims, error: dimsError } = await supabase
     .from("product_dimensions")
-    .select("product_id, units_per")
+    .select("product_id, kind, units_per, cartons_per_layer, number_of_layers, cartons_per_pallet")
     .in("product_id", productIds);
 
   if (dimsError) {
@@ -183,10 +190,30 @@ export async function loadContainerContents(
   }
 
   const unitsPerMap = new Map<string, number>();
+  const palletDimsMap = new Map<
+    string,
+    { cartons_per_layer: number | null; number_of_layers: number | null; cartons_per_pallet: number | null }
+  >();
+
   for (const d of dims || []) {
-    const pid = (d as any).product_id as string;
-    const units = Number((d as any).units_per) || 0;
+    const row = d as any;
+    const pid = row.product_id as string;
+    const kind = row.kind as string;
+
+    const units = Number(row.units_per) || 0;
     if (units > 0 && !unitsPerMap.has(pid)) unitsPerMap.set(pid, units);
+
+    if (kind === "pallet" && !palletDimsMap.has(pid)) {
+      const cpl = row.cartons_per_layer != null ? Number(row.cartons_per_layer) : null;
+      const nol = row.number_of_layers != null ? Number(row.number_of_layers) : null;
+      const cppStored = row.cartons_per_pallet != null ? Number(row.cartons_per_pallet) : null;
+      const cpp = cppStored ?? (cpl != null && nol != null ? cpl * nol : null);
+      palletDimsMap.set(pid, {
+        cartons_per_layer: cpl,
+        number_of_layers: nol,
+        cartons_per_pallet: cpp,
+      });
+    }
   }
 
   const rows: ContainerContentsRow[] = productIds.map((pid) => {
@@ -194,14 +221,19 @@ export async function loadContainerContents(
     const expectedUnits = expectedMap.get(pid) || 0;
     const receivedCases = receivedCasesMap.get(pid) || 0;
     const unitsPer = unitsPerMap.get(pid) || 0;
+    const expectedCases = unitsPer > 0 ? expectedUnits / unitsPer : null;
     const receivedUnits = unitsPer > 0 ? receivedCases * unitsPer : null;
     const loosePieces = loosePiecesMap.get(pid) || 0;
 
     let discrepancy: number | null = null;
     if (receivedUnits != null || loosePieces > 0) {
       const receivedTotal = (receivedUnits ?? 0) + loosePieces;
-      discrepancy = expectedUnits - receivedTotal;
+      // Positive discrepancy means over-received; negative means under-received.
+      discrepancy = receivedTotal - expectedUnits;
     }
+
+    const pallet = palletDimsMap.get(pid) || null;
+    const remainingCases = expectedCases != null ? expectedCases - receivedCases : null;
 
     return {
       product_id: pid,
@@ -213,6 +245,12 @@ export async function loadContainerContents(
       received_cases: receivedCases,
       loose_pieces_received: loosePieces > 0 ? loosePieces : null,
       discrepancy,
+      units_per_case: unitsPer > 0 ? unitsPer : null,
+      expected_cases: expectedCases,
+      cartons_per_layer: pallet?.cartons_per_layer ?? null,
+      number_of_layers: pallet?.number_of_layers ?? null,
+      cartons_per_pallet: pallet?.cartons_per_pallet ?? null,
+      remaining_cases: remainingCases,
     };
   });
 

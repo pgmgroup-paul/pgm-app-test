@@ -26,7 +26,7 @@ export async function saveDimensions(_prev: SaveDimensionsState, formData: FormD
     return value;
   };
 
-  const text = (name: string): string | null => {
+  const _text = (name: string): string | null => {
     const raw = (formData.get(name) || "").toString().trim();
     return raw || null;
   };
@@ -37,15 +37,15 @@ export async function saveDimensions(_prev: SaveDimensionsState, formData: FormD
   const caseHeight = num("case_height");
   const caseWeight = num("case_weight");
   const caseUnitsPer = num("case_units_per");
-  const caseUomLength = text("case_uom_length");
-  const caseUomWeight = text("case_uom_weight");
+  const caseUomLength = "in";
+  const caseUomWeight = "lb";
 
   // PALLET dims
   const palletLength = num("pallet_length");
   const palletWidth = num("pallet_width");
   const palletHeight = num("pallet_height");
-  const palletUomLength = text("pallet_uom_length") || "in";
-  const palletUomWeight = text("pallet_uom_weight") || "lb";
+  const palletUomLength = "in";
+  const palletUomWeight = "lb";
   const cartonsPerLayer = num("pallet_cartons_per_layer");
   const numberOfLayers = num("pallet_number_of_layers");
   const cartonsPerPallet =

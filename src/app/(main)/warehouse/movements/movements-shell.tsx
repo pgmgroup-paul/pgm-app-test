@@ -12,7 +12,7 @@ export function MovementsShell() {
 
   const mobileGroups: { key: string; label: string; rows: MovementRow[] }[] =
     state.ok === true && state.rows
-      ? state.rows.reduce((groups, row) => {
+      ? state.rows.reduce<Array<{ key: string; label: string; rows: MovementRow[] }>>((groups, row) => {
           const d = new Date(row.created_at);
           const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
           const label = d.toLocaleDateString(undefined, {

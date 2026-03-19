@@ -262,7 +262,8 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                   <th className="px-2 py-1">Product name</th>
                   <th className="px-2 py-1 text-right">Pieces requested</th>
                   <th className="px-2 py-1 text-right">Cases</th>
-                  <th className="px-2 py-1 text-right">Cases remaining to pick</th>
+                  <th className="px-2 py-1 text-right">Order breakdown</th>
+                  <th className="px-2 py-1 text-right font-semibold text-foreground">Cases remaining to pick</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,6 +275,9 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                   const qtyUnits = Number(row.quantity_shipped_units) || 0;
                   const unitsPerCase = Number((row as any).units_per_case) || 0;
                   const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+                  const fullCases = unitsPerCase > 0 ? Math.floor(qtyUnits / unitsPerCase) : 0;
+                  const remainingPieces = unitsPerCase > 0 ? qtyUnits % unitsPerCase : 0;
+                  const hasBreakCase = unitsPerCase > 0 && remainingPieces > 0;
                   const casesPicked = Number((row as any).cases_picked) || 0;
                   const casesRemaining = Math.max(casesRequired - casesPicked, 0);
                   const locations: { location_code: string; quantity: number; available_cases: number }[] =
@@ -288,10 +292,27 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                           {sku}
                           {skuVar ? `-${skuVar}` : ""}
                         </td>
-                        <td className="px-2 py-1 text-[11px]">{productName}</td>
+                        <td className="px-2 py-1 text-[11px]">
+                          <span>{productName}</span>
+                          {hasBreakCase && (
+                            <span className="ml-1 rounded-sm bg-amber-50 px-1 text-[10px] font-medium text-amber-700 align-middle">
+                              ⚠ Break case
+                            </span>
+                          )}
+                        </td>
                         <td className="px-2 py-1 text-right text-[11px]">{qtyUnits}</td>
                         <td className="px-2 py-1 text-right text-[11px]">{casesRequired}</td>
-                        <td className="px-2 py-1 text-right text-[11px]">{casesRemaining}</td>
+                        <td className="px-2 py-1 text-right text-[10px] text-muted-foreground whitespace-nowrap">
+                          {unitsPerCase > 0 && fullCases > 0 && remainingPieces > 0 && (
+                            <>
+                              {fullCases} cs + {remainingPieces} pcs
+                            </>
+                          )}
+                          {unitsPerCase > 0 && fullCases > 0 && remainingPieces === 0 && <>{fullCases} cs</>}
+                          {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces > 0 && <>{remainingPieces} pcs</>}
+                          {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces === 0 && <>-</>}
+                        </td>
+                        <td className="px-2 py-1 text-right text-[12px] font-semibold">{casesRemaining}</td>
                       </tr>
 
                       {locations.map((loc, idx) => (
@@ -337,6 +358,9 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
               const qtyUnits = Number(row.quantity_shipped_units) || 0;
               const unitsPerCase = Number((row as any).units_per_case) || 0;
               const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+              const fullCases = unitsPerCase > 0 ? Math.floor(qtyUnits / unitsPerCase) : 0;
+              const remainingPieces = unitsPerCase > 0 ? qtyUnits % unitsPerCase : 0;
+              const hasBreakCase = unitsPerCase > 0 && remainingPieces > 0;
               const casesPicked = Number((row as any).cases_picked) || 0;
               const casesRemaining = Math.max(casesRequired - casesPicked, 0);
               const locations: { location_code: string; quantity: number; available_cases: number }[] =
@@ -357,16 +381,34 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                       {sku}
                       {skuVar ? `-${skuVar}` : ""}
                     </div>
-                    <div className="mt-1 text-[11px] text-muted-foreground">{productName}</div>
-                    <div className="mt-1 text-[11px]">
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                      <span>{productName}</span>
+                      {hasBreakCase && (
+                        <span className="ml-1 rounded-sm bg-amber-50 px-1 text-[10px] font-medium text-amber-700 align-middle">
+                          ⚠ Break case
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground whitespace-nowrap">
+                      Order:{" "}
+                      {unitsPerCase > 0 && fullCases > 0 && remainingPieces > 0 && (
+                        <>
+                          {fullCases} cs + {remainingPieces} pcs
+                        </>
+                      )}
+                      {unitsPerCase > 0 && fullCases > 0 && remainingPieces === 0 && <>{fullCases} cs</>}
+                      {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces > 0 && <>{remainingPieces} pcs</>}
+                      {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces === 0 && <>-</>}
+                    </div>
+                    <div className="mt-0.5 text-[11px]">
                       Location: <span className="font-mono">{loc.location_code}</span>
                     </div>
-                    <div className="mt-1 text-[11px]">
+                    <div className="mt-0.5 text-[11px]">
                       Available:{" "}
                       <span className={lowStock ? "font-medium text-red-600" : ""}>{loc.available_cases} cases</span>
                       {lowStock && <span className="ml-1 align-middle text-[10px] text-red-600">(Low stock)</span>}
                     </div>
-                    <div className="mt-1 text-[11px]">
+                    <div className="mt-0.5 text-[12px] font-semibold">
                       Cases remaining: {casesRemaining} {completed && <span className="text-emerald-600">✓</span>}
                     </div>
 

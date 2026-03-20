@@ -181,6 +181,18 @@ export async function deleteShipmentFromShipmentPage(
     redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
   }
 
+  // 1) Delete any dropship transfers that reference this shipment
+  const { error: delDropshipError } = await serverSupabase
+    .from("dropship_transfers")
+    .delete()
+    .eq("source_shipment_id", shipmentIdToDelete);
+
+  if (delDropshipError) {
+    console.error("Error deleting dropship_transfers for shipment", delDropshipError);
+    redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
+  }
+
+  // 2) Delete child shipment lines
   const { error: delLinesError } = await serverSupabase
     .from("so_shipment_lines")
     .delete()
@@ -191,6 +203,7 @@ export async function deleteShipmentFromShipmentPage(
     redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
   }
 
+  // 3) Delete the shipment header
   const { error: delError } = await serverSupabase.from("so_shipments").delete().eq("id", shipmentIdToDelete);
 
   if (delError) {

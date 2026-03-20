@@ -265,18 +265,11 @@ export function ConsolidateLocationForm({ warehouses }: Props) {
               </div>
 
               <div className="space-y-1 text-xs">
-                <label htmlFor="move_unit" className="font-medium">
-                  Unit
-                </label>
-                <select
-                  id="move_unit"
-                  name="move_unit"
-                  defaultValue="pallets"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="pallets">Pallets</option>
-                  <option value="cases">Cases</option>
-                </select>
+                <label className="font-medium">Unit</label>
+                <div className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm">
+                  Cases
+                </div>
+                <input type="hidden" id="move_unit" name="move_unit" value="cases" />
               </div>
             </div>
 

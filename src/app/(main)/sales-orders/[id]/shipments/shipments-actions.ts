@@ -57,6 +57,17 @@ export async function deleteShipmentForSoOnList(salesOrderId: string, shipmentId
     redirect(`/sales-orders/${salesOrderId}/shipments`);
   }
 
+  // 1) Delete any dropship transfers that reference this shipment
+  const { error: delDropshipError } = await serverSupabase
+    .from("dropship_transfers")
+    .delete()
+    .eq("source_shipment_id", shipmentId);
+
+  if (delDropshipError) {
+    console.error("Error deleting dropship_transfers for shipment", delDropshipError);
+  }
+
+  // 2) Delete child shipment lines
   const { error: delLinesError } = await serverSupabase
     .from("so_shipment_lines")
     .delete()
@@ -66,11 +77,13 @@ export async function deleteShipmentForSoOnList(salesOrderId: string, shipmentId
     console.error("Error deleting shipment lines from list page", delLinesError);
   }
 
+  // 3) Delete the shipment header
   const { error: delError } = await serverSupabase.from("so_shipments").delete().eq("id", shipmentId);
 
   if (delError) {
     console.error("Error deleting shipment from list page", delError);
   }
 
+  // After delete, redirect back to the shipments page so both sections reload
   redirect(`/sales-orders/${salesOrderId}/shipments`);
 }

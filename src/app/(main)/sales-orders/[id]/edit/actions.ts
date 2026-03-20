@@ -132,7 +132,18 @@ export async function deleteShipmentForSo(soId: string, shipmentId: string) {
     redirect(`/sales-orders/${soId}/edit`);
   }
 
-  // Delete child shipment lines first (in case FKs do not cascade)
+  // 1) Delete any dropship transfers that reference this shipment
+  const { error: delDropshipError } = await serverSupabase
+    .from("dropship_transfers")
+    .delete()
+    .eq("source_shipment_id", shipmentId);
+
+  if (delDropshipError) {
+    console.error("Error deleting dropship_transfers for shipment", delDropshipError);
+    redirect(`/sales-orders/${soId}/edit`);
+  }
+
+  // 2) Delete child shipment lines first (in case FKs do not cascade)
   const { error: delLinesError } = await serverSupabase
     .from("so_shipment_lines")
     .delete()
@@ -143,6 +154,7 @@ export async function deleteShipmentForSo(soId: string, shipmentId: string) {
     redirect(`/sales-orders/${soId}/edit`);
   }
 
+  // 3) Delete the shipment header
   const { error: delError } = await serverSupabase.from("so_shipments").delete().eq("id", shipmentId);
 
   if (delError) {

@@ -415,48 +415,17 @@ export function AddShell() {
             </div>
 
             <div className="space-y-1 text-xs">
-              <label htmlFor="add_unit" className="font-medium">
-                Unit
-              </label>
-              <select
-                id="add_unit"
-                name="add_unit"
-                defaultValue="cases"
-                className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="cases">Cases</option>
-                <option value="pallets">Pallets</option>
-              </select>
+              <label className="font-medium">Unit</label>
+              <div className="w-full rounded-md border border-input bg-muted px-2 py-1 text-xs shadow-sm">
+                Cases
+              </div>
+              <input type="hidden" id="add_unit" name="add_unit" value="cases" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1 text-xs">
-              <label htmlFor="add_warehouse_name" className="font-medium">
-                Warehouse
-              </label>
-              <select
-                id="add_warehouse_name"
-                name="add_warehouse_name"
-                className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                defaultValue={
-                  warehousesState.warehouses?.find((w) => w.name === "Industry")
-                    ? "Industry"
-                    : warehousesState.warehouses && warehousesState.warehouses.length > 0
-                      ? warehousesState.warehouses[0].name
-                      : ""
-                }
-              >
-                <option value="" disabled>
-                  Select a warehouse
-                </option>
-                {warehousesState.warehouses?.map((w) => (
-                  <option key={w.id} value={w.name}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Warehouse is fixed to Industry; no user selection needed */}
+            <input type="hidden" id="add_warehouse_name" name="add_warehouse_name" value="Industry" />
 
             <div className="space-y-1 text-xs">
               <label htmlFor="add_location_code" className="font-medium">
@@ -628,48 +597,17 @@ export function AddShell() {
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <label htmlFor="add_unit" className="font-medium">
-                    Unit
-                  </label>
-                  <select
-                    id="add_unit"
-                    name="add_unit"
-                    defaultValue="cases"
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="cases">Cases</option>
-                    <option value="pallets">Pallets</option>
-                  </select>
+                  <label className="font-medium">Unit</label>
+                  <div className="w-full rounded-md border border-input bg-muted px-2 py-1 text-xs shadow-sm">
+                    Cases
+                  </div>
+                  <input type="hidden" id="add_unit" name="add_unit" value="cases" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1 text-xs">
-                  <label htmlFor="add_warehouse_name" className="font-medium">
-                    Warehouse
-                  </label>
-                  <select
-                    id="add_warehouse_name"
-                    name="add_warehouse_name"
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    defaultValue={
-                      productState.warehouses?.find((w) => w.name === "Industry")
-                        ? "Industry"
-                        : productState.warehouses && productState.warehouses.length > 0
-                          ? productState.warehouses[0].name
-                          : ""
-                    }
-                  >
-                    <option value="" disabled>
-                      Select a warehouse
-                    </option>
-                    {productState.warehouses?.map((w) => (
-                      <option key={w.id} value={w.name}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Warehouse is fixed to Industry; no user selection needed */}
+                <input type="hidden" id="add_warehouse_name" name="add_warehouse_name" value="Industry" />
 
                 <div className="space-y-1 text-xs">
                   <label htmlFor="add_location_code" className="font-medium">

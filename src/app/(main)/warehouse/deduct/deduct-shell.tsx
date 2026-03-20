@@ -340,18 +340,11 @@ export function DeductShell({
               </div>
 
               <div className="space-y-1 text-xs">
-                <label htmlFor="deduct_unit" className="font-medium">
-                  Unit
-                </label>
-                <select
-                  id="deduct_unit"
-                  name="deduct_unit"
-                  defaultValue="cases"
-                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="cases">Cases</option>
-                  <option value="pallets">Pallets</option>
-                </select>
+                <label className="font-medium">Unit</label>
+                <div className="w-full rounded-md border border-input bg-muted px-2 py-1 text-xs shadow-sm">
+                  Cases
+                </div>
+                <input type="hidden" id="deduct_unit" name="deduct_unit" value="cases" />
               </div>
             </div>
 

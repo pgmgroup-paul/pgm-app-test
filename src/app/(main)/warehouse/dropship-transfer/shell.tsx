@@ -255,18 +255,11 @@ export function DropshipTransferShell() {
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <label htmlFor="unit" className="font-medium">
-                    Unit
-                  </label>
-                  <select
-                    id="unit"
-                    name="unit"
-                    defaultValue="pieces"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="pieces">Pieces</option>
-                    {sourceType === "container" && <option value="cases">Cases</option>}
-                  </select>
+                  <label className="font-medium">Unit</label>
+                  <div className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm">
+                    Pieces
+                  </div>
+                  <input type="hidden" id="unit" name="unit" value="pieces" />
                 </div>
               </div>
 

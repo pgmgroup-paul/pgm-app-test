@@ -100,8 +100,9 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
       }
 
       const remainingCases = Math.max(totalOrderedCases - alreadyPickedCases, 0);
+      const allowedCases = Math.ceil(remainingCases);
 
-      if (unit === "cases" && quantity > remainingCases) {
+      if (unit === "cases" && quantity > allowedCases) {
         return { ok: false, error: "Cannot pick more than remaining cases for this order" };
       }
     }

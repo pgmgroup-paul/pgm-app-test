@@ -43,7 +43,8 @@ export async function addShipmentForSo(salesOrderId: string) {
     throw new Error(error?.message ?? "Failed to add shipment");
   }
 
-  redirect(`/sales-orders/${salesOrderId}/shipments/${data.id as string}`);
+  // After creating the shipment, return to the SO shipments page so the list refreshes
+  redirect(`/sales-orders/${salesOrderId}/shipments`);
 }
 
 export async function deleteShipmentForSoOnList(salesOrderId: string, shipmentId: string) {

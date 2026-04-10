@@ -120,7 +120,7 @@ async function loadShipmentProgress(
   if (orderNumbers.length > 0 && productIds.length > 0) {
     const { data: moves, error: movesError } = await supabase
       .from("inventory_movements")
-      .select("order_number, product_id, quantity_cases, movement_type, reason")
+      .select("order_number, product_id, quantity_cases, movement_type, reason, shipment_id")
       .in("order_number", orderNumbers)
       .eq("movement_type", "deduct")
       .eq("reason", "order")
@@ -135,7 +135,9 @@ async function loadShipmentProgress(
       const pid = (m as any).product_id as string;
       const qtyCases = Number((m as any).quantity_cases) || 0;
       if (!ord || !pid || qtyCases <= 0) continue;
-      const key = `${ord}::${pid}`;
+      const sid = (m as any).shipment_id as string | null;
+
+      const key = sid ? `${sid}::${pid}` : `${ord}::${pid}`;
       deductedCasesByOrderProduct.set(key, (deductedCasesByOrderProduct.get(key) || 0) + qtyCases);
     }
   }
@@ -166,8 +168,12 @@ async function loadShipmentProgress(
       const qtyUnits = Number((line as any).quantity_shipped_units) || 0;
       const unitsPerCase = unitsPerCaseByProduct.get(pid) || 0;
       const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
-      const key = `${shipment.order_number}::${pid}`;
-      const casesPicked = deductedCasesByOrderProduct.get(key) || 0;
+
+      const keyByShipment = `${shipment.id}::${pid}`;
+      const keyLegacy = `${shipment.order_number}::${pid}`;
+      const casesPicked =
+        (deductedCasesByOrderProduct.get(keyByShipment) || 0) +
+        (deductedCasesByOrderProduct.get(keyLegacy) || 0);
       const casesRemaining = Math.max(casesRequired - casesPicked, 0);
 
       if (casesRemaining <= 0 && casesRequired > 0) {

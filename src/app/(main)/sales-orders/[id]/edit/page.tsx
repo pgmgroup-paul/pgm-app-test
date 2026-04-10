@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
+import { cancelSalesOrder } from "../cancel-order";
 
 export const dynamic = "force-dynamic";
 
@@ -94,28 +95,49 @@ export default async function EditSalesOrderPage({
 
   const { so, lines, shipments } = data as any;
 
+  const hasShippedShipment = (shipments as any[] | undefined)?.some((s) => (s.status as string) === "shipped");
+  const canCancelSo = (so.status as string) !== "cancelled" && !hasShippedShipment;
+
   return (
     <div className="max-w-4xl space-y-4 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="space-y-1">
           <h1 className="font-semibold text-lg tracking-tight">Edit sales order</h1>
           <p className="text-muted-foreground text-sm">
             SO <span className="font-mono">{so.order_number}</span> – {so.customer_name}
           </p>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            redirect(`/sales-orders/${so.id as string}/shipments`);
-          }}
-        >
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+        <div className="flex items-center gap-2">
+          {canCancelSo && (
+            <form
+              action={async () => {
+                "use server";
+                // NOTE: for a true modal confirmation, wrap this in a client component with window.confirm.
+                await cancelSalesOrder(so.id as string);
+              }}
+            >
+              <button
+                type="submit"
+                className="inline-flex items-center rounded-md border border-destructive px-3 py-1.5 font-medium text-[11px] text-destructive hover:bg-destructive/10"
+              >
+                Cancel Sales Order
+              </button>
+            </form>
+          )}
+          <form
+            action={async () => {
+              "use server";
+              redirect(`/sales-orders/${so.id as string}/shipments`);
+            }}
           >
-            Shipments
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+            >
+              Shipments
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="space-y-2 rounded-md border px-3 py-3 text-xs">

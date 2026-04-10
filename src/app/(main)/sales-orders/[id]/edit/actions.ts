@@ -72,12 +72,12 @@ export async function createShipmentDraftForSo(soId: string) {
       // If there is a planned shipment, go to it; otherwise create a new one below
       const planned = existing.find((s) => s.status === "planned");
       if (planned) {
-        redirect(`/sales-orders/${soId}/shipments/${planned.id as string}`);
+        redirect(`/sales-orders/${soId}/sales-shipments/${planned.id as string}`);
       }
     } else {
       // No remaining quantity: show list/contents view on first shipment (read-only)
       const first = existing[0];
-      redirect(`/sales-orders/${soId}/shipments/${first.id as string}?mode=list`);
+      redirect(`/sales-orders/${soId}/sales-shipments/${first.id as string}?mode=list`);
     }
   }
 
@@ -101,7 +101,7 @@ export async function createShipmentDraftForSo(soId: string) {
     throw new Error("No shipment_id returned from draft RPC");
   }
 
-  redirect(`/sales-orders/${soId}/shipments/${shipmentId}`);
+  redirect(`/sales-orders/${soId}/sales-shipments/${shipmentId}`);
 }
 
 export async function deleteShipmentForSo(soId: string, shipmentId: string) {

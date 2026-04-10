@@ -14,6 +14,29 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
 
   const { error } = await searchParams;
 
+  // Pre-generate next SO number for default input value
+  let nextNumber = 10100;
+
+  const { data: maxSoForUi, error: maxErrorForUi } = await serverSupabase
+    .from("sales_orders")
+    .select("order_number")
+    .ilike("order_number", "SO1%")
+    .order("order_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!maxErrorForUi && maxSoForUi?.order_number) {
+    const match = maxSoForUi.order_number.match(/^SO(\d+)$/);
+    if (match) {
+      const current = Number(match[1]);
+      if (Number.isFinite(current)) {
+        nextNumber = current + 1;
+      }
+    }
+  }
+
+  const autoOrderNumber = `SO${nextNumber}`;
+
   return (
     <div className="max-w-2xl space-y-4 p-6">
       <div className="space-y-1">
@@ -61,12 +84,38 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
             }
           }
 
-          const nextOrderNumber = `SO${nextNumber}`;
+          const autoOrderNumber = `SO${nextNumber}`;
+
+          // Allow user override, normalize, and keep SOxxxxx format
+          let orderNumber = (formData.get("order_number") || "").toString().trim();
+          if (!orderNumber) {
+            orderNumber = autoOrderNumber;
+          }
+
+          // Normalize: uppercase
+          orderNumber = orderNumber.toUpperCase();
+
+          // Validate format: must start with SO and be SO + digits
+          const matchCustom = orderNumber.match(/^SO(\d+)$/);
+          if (!matchCustom) {
+            redirect("/sales-orders/new?error=bad-order-number");
+          }
+
+          // Enforce uniqueness before insert
+          const { data: existingSo, error: existingError } = await serverSupabase
+            .from("sales_orders")
+            .select("id")
+            .eq("order_number", orderNumber)
+            .maybeSingle();
+
+          if (!existingError && existingSo) {
+            redirect("/sales-orders/new?error=duplicate-order-number");
+          }
 
           const { data, error } = await serverSupabase
             .from("sales_orders")
             .insert({
-              order_number: nextOrderNumber,
+              order_number: orderNumber,
               customer_name: customerName,
               order_date: orderDateRaw,
               requested_ship_date: requestedShipRaw || null,
@@ -86,10 +135,19 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <div className="font-medium">SO number</div>
-            <div className="w-full rounded-md border border-input border-dashed bg-muted px-3 py-2 text-muted-foreground text-xs">
-              Will be assigned automatically (starting from SO10100)
-            </div>
+            <label htmlFor="order_number" className="font-medium">
+              SO number
+            </label>
+            <input
+              id="order_number"
+              name="order_number"
+              type="text"
+              defaultValue={autoOrderNumber}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Leave as is or enter a custom SO number (format: SOxxxxx)
+            </p>
           </div>
           <div className="space-y-1">
             <label htmlFor="customer_name" className="font-medium">
@@ -152,6 +210,12 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
 
         {error === "missing-fields" && (
           <p className="mt-2 text-destructive text-xs">Customer and order date are required.</p>
+        )}
+        {error === "bad-order-number" && (
+          <p className="mt-2 text-destructive text-xs">SO number must be in the format SOxxxxx.</p>
+        )}
+        {error === "duplicate-order-number" && (
+          <p className="mt-2 text-destructive text-xs">SO number already exists. Please choose a different one.</p>
         )}
         {error === "create-failed" && <p className="mt-2 text-destructive text-xs">Failed to create sales order.</p>}
       </form>

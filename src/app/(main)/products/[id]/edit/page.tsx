@@ -285,6 +285,8 @@ interface EditPageSearchParams {
     error?: string;
     tab?: string;
     success?: string;
+    missing_units_per?: string;
+    missing_carton_dims?: string;
   };
 }
 
@@ -342,6 +344,9 @@ export default async function EditProductPage({ params, searchParams }: EditProd
 
   const activeTab = searchParams?.tab ?? "basic";
 
+  const missingUnitsPer = searchParams?.missing_units_per === "true";
+  const missingCartonDims = searchParams?.missing_carton_dims === "true";
+
   return (
     <div className="max-w-3xl space-y-6 p-6">
       <div className="flex items-center justify-between gap-4">
@@ -377,6 +382,12 @@ export default async function EditProductPage({ params, searchParams }: EditProd
               This is the main product image used in the catalog (from the Image URL field in Basic info).
             </p>
           </div>
+        </div>
+      )}
+
+      {(missingUnitsPer || missingCartonDims) && (
+        <div style={{ marginBottom: 12, color: "#856404", background: "#fff3cd", padding: 8 }}>
+          Please complete highlighted fields to enable container planning.
         </div>
       )}
 
@@ -638,6 +649,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.package?.length as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingUnitsPer ? "#fff3cd" : undefined }}
                       />
                     </div>
                     <div>
@@ -651,6 +663,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.package?.width as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingUnitsPer ? "#fff3cd" : undefined }}
                       />
                     </div>
                     <div>
@@ -664,6 +677,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.package?.height as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingUnitsPer ? "#fff3cd" : undefined }}
                       />
                     </div>
                   </div>
@@ -679,6 +693,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.package?.weight as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingUnitsPer ? "#fff3cd" : undefined }}
                       />
                     </div>
                   </div>
@@ -701,6 +716,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.carton?.length as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingCartonDims ? "#fff3cd" : undefined }}
                       />
                     </div>
                     <div>
@@ -714,6 +730,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.carton?.width as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingCartonDims ? "#fff3cd" : undefined }}
                       />
                     </div>
                     <div>
@@ -727,6 +744,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.carton?.height as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingCartonDims ? "#fff3cd" : undefined }}
                       />
                     </div>
                   </div>
@@ -742,6 +760,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="0.01"
                         defaultValue={(dimByKind.carton?.weight as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingCartonDims ? "#fff3cd" : undefined }}
                       />
                     </div>
                     <div>
@@ -755,6 +774,7 @@ export default async function EditProductPage({ params, searchParams }: EditProd
                         step="1"
                         defaultValue={(dimByKind.package?.units_per as number | undefined) ?? ""}
                         className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        style={{ backgroundColor: missingUnitsPer ? "#fff3cd" : undefined }}
                       />
                     </div>
                   </div>

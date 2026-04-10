@@ -165,31 +165,44 @@ export async function loadDeductLocations(
 
     // 2) picked_cases from inventory_movements for this shipment+product with reason=order
     const orderNumbers = Array.from(new Set(shipments.map((s) => s.order_number).filter(Boolean)));
+    const shipmentIdsForMoves = shipments.map((s) => s.id);
 
     const { data: moves, error: movesError } = await supabase
       .from("inventory_movements")
-      .select("order_number, product_id, quantity_cases, movement_type, reason")
+      .select("order_number, product_id, quantity_cases, movement_type, reason, shipment_id")
       .eq("product_id", product.id as string)
       .in("order_number", orderNumbers)
       .eq("movement_type", "deduct")
-      .eq("reason", "order");
+      .eq("reason", "order")
+      .in("shipment_id", [null, ...shipmentIdsForMoves]);
 
     if (movesError) {
       console.error("Error loading inventory_movements for deduct shipments", movesError);
     }
 
-    const pickedCasesByOrder = new Map<string, number>();
+    const pickedCasesByShipment = new Map<string, number>();
+    const pickedCasesByOrderLegacy = new Map<string, number>();
+
     for (const m of moves || []) {
       const ord = (m as any).order_number as string;
       const qtyCases = Number((m as any).quantity_cases) || 0;
+      const sid = (m as any).shipment_id as string | null;
       if (!ord || qtyCases <= 0) continue;
-      pickedCasesByOrder.set(ord, (pickedCasesByOrder.get(ord) || 0) + qtyCases);
+
+      if (sid) {
+        pickedCasesByShipment.set(sid, (pickedCasesByShipment.get(sid) || 0) + qtyCases);
+      } else {
+        pickedCasesByOrderLegacy.set(ord, (pickedCasesByOrderLegacy.get(ord) || 0) + qtyCases);
+      }
     }
 
-    // 3) final cases_remaining = ordered_cases - picked_cases (order-scoped, same as orders page today)
+    // 3) final cases_remaining = ordered_cases - picked_cases
+    // picked_cases = SUM(shipment_id = X) + SUM(shipment_id IS NULL AND order_number = so_order_number)
     for (const s of shipments) {
       const orderedCases = orderedCasesByShipment.get(s.id) || 0;
-      const pickedCases = pickedCasesByOrder.get(s.order_number) || 0;
+      const pickedByShipment = pickedCasesByShipment.get(s.id) || 0;
+      const pickedLegacy = pickedCasesByOrderLegacy.get(s.order_number) || 0;
+      const pickedCases = pickedByShipment + pickedLegacy;
       const remainingCases = Math.max(orderedCases - pickedCases, 0);
 
       s.qty_ordered_units = unitsPerCase > 0 ? orderedCases * unitsPerCase : orderedCases;

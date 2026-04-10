@@ -122,8 +122,8 @@ export function MovementsShell() {
                       : "Add";
                     locationDesc = row.to_location_code || "";
                   } else if (row.movement_type === "deduct") {
-                    if (row.reason === "order" && row.order_number) {
-                      movementDesc = `Deduct (order ${row.order_number})`;
+                    if (row.reason === "order" && (row.shipment_label || row.order_number)) {
+                      movementDesc = `Deduct (order ${row.shipment_label || row.order_number})`;
                     } else {
                       movementDesc = row.reason
                         ? `Deduct (${row.reason}${row.source_ref ? ` ${row.source_ref}` : ""})`
@@ -183,8 +183,8 @@ export function MovementsShell() {
                         : "Add";
                       locationDesc = row.to_location_code || "";
                     } else if (row.movement_type === "deduct") {
-                      if (row.reason === "order" && row.order_number) {
-                        movementDesc = `Deduct (order ${row.order_number})`;
+                      if (row.reason === "order" && (row.shipment_label || row.order_number)) {
+                        movementDesc = `Deduct (order ${row.shipment_label || row.order_number})`;
                       } else {
                         movementDesc = row.reason
                           ? `Deduct (${row.reason}${row.source_ref ? ` ${row.source_ref}` : ""})`

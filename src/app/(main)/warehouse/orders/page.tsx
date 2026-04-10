@@ -12,7 +12,41 @@ async function markShipmentReady(shipmentId: string) {
 
   if (!shipmentId) return;
 
-  const { error } = await serverSupabase.from("so_shipments").update({ status: "ready" }).eq("id", shipmentId);
+  // Load current status for validation
+  const { data: shipment, error: loadError } = await serverSupabase
+    .from("so_shipments")
+    .select("status")
+    .eq("id", shipmentId)
+    .maybeSingle();
+
+  if (loadError || !shipment) {
+    console.error("Error loading shipment before mark ready on /warehouse/orders", loadError);
+    redirect("/warehouse/orders");
+  }
+
+  const currentStatus = (shipment as any).status as string;
+  const newStatus = "ready";
+
+  const allowedTransitions: Record<string, string[]> = {
+    planned: ["processing", "cancelled"],
+    processing: ["ready", "cancelled"],
+    ready: ["shipped", "cancelled"],
+    shipped: [],
+    cancelled: [],
+  };
+
+  const allowed = allowedTransitions[currentStatus] ?? [];
+  if (!allowed.includes(newStatus)) {
+    const message =
+      currentStatus === "shipped" || currentStatus === "cancelled"
+        ? "Cannot modify a shipped or cancelled shipment"
+        : `Invalid status transition from ${currentStatus} to ${newStatus}`;
+
+    console.error(message);
+    redirect("/warehouse/orders");
+  }
+
+  const { error } = await serverSupabase.from("so_shipments").update({ status: newStatus }).eq("id", shipmentId);
 
   if (error) {
     console.error("Error marking shipment ready on /warehouse/orders", error);

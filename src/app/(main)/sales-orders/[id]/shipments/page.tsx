@@ -143,25 +143,27 @@ export default async function SalesOrderShipmentsPage({ params }: { params: Prom
                     <td className="px-2 py-1 text-[11px] capitalize">{s.status}</td>
                     <td className="space-x-1 px-2 py-1 text-right text-[11px]">
                       <a
-                        href={`/sales-orders/${salesOrderId}/shipments/${s.id}`}
+                        href={`/sales-orders/${salesOrderId}/sales-shipments/${s.id}`}
                         className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] hover:bg-muted"
                       >
                         Open
                       </a>
-                      <form
-                        action={async () => {
-                          "use server";
-                          await deleteShipmentForSoOnList(salesOrderId, s.id as string);
-                        }}
-                        className="inline-block"
-                      >
-                        <button
-                          type="submit"
-                          className="inline-flex items-center rounded-md border border-destructive px-2 py-0.5 text-[10px] text-destructive hover:bg-destructive/10"
+                      {s.status === "planned" && (
+                        <form
+                          action={async () => {
+                            "use server";
+                            await deleteShipmentForSoOnList(salesOrderId, s.id as string);
+                          }}
+                          className="inline-block"
                         >
-                          Delete
-                        </button>
-                      </form>
+                          <button
+                            type="submit"
+                            className="inline-flex items-center rounded-md border border-destructive px-2 py-0.5 text-[10px] text-destructive hover:bg-destructive/10"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      )}
                     </td>
                   </tr>
                 ))}

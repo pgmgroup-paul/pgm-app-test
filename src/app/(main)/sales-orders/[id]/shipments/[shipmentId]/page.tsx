@@ -283,7 +283,7 @@ export default async function SalesOrderShipmentPage({
                         <td className="px-2 py-1 text-right text-[11px]">{s.total_shipped_units}</td>
                         <td className="space-x-1 px-2 py-1 text-right text-[11px]">
                           <a
-                            href={`/sales-orders/${shipment.sales_order_id as string}/shipments/${s.id}?mode=contents`}
+                            href={`/sales-orders/${shipment.sales_order_id as string}/sales-shipments/${s.id}?mode=contents`}
                             className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] hover:bg-muted"
                           >
                             View
@@ -362,7 +362,7 @@ export default async function SalesOrderShipmentPage({
                             console.error("Error deleting allocation row", error);
                           }
 
-                          redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}`);
+                          redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}`);
                         }}
                         className="inline-block"
                       >

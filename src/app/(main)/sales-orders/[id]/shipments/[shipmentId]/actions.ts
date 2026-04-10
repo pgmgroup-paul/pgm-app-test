@@ -25,12 +25,12 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
   }
 
   if (!targetLineId || !rawQty) {
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}`);
   }
 
   const qty = Number(rawQty);
   if (!Number.isFinite(qty) || qty <= 0) {
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=bad-qty`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=bad-qty`);
   }
 
   // Load ordered + shipped to enforce remaining >= qty
@@ -42,7 +42,7 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
 
   if (soLineError || !soLine) {
     console.error("Error loading SO line for allocation", soLineError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=alloc-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=alloc-error`);
   }
 
   const { data: shippedAgg, error: shippedError } = await serverSupabase
@@ -52,7 +52,7 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
 
   if (shippedError) {
     console.error("Error loading shipped aggregates for allocation", shippedError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=alloc-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=alloc-error`);
   }
 
   const totalShipped = (shippedAgg || []).reduce((acc, row) => {
@@ -63,7 +63,7 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
   const remaining = Math.max(ordered - totalShipped, 0);
 
   if (qty > remaining) {
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=over-allocate`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=over-allocate`);
   }
 
   // Enforce unique (so_shipment_id, sales_order_line_id)
@@ -76,12 +76,12 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
 
   if (existingAllocError) {
     console.error("Error checking existing allocation", existingAllocError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=alloc-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=alloc-error`);
   }
 
   if (existingAlloc) {
     // Do not allow duplicate in this design; user must delete and re-add if needed
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=duplicate-line`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=duplicate-line`);
   }
 
   const { error } = await serverSupabase.from("so_shipment_lines").insert({
@@ -97,10 +97,10 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
 
   if (error) {
     console.error("Error inserting shipment allocation", error);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=alloc-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=alloc-error`);
   }
 
-  redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=allocated`);
+  redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=allocated`);
 }
 
 export async function sendShipmentToWarehouse(salesOrderId: string, shipmentId: string) {
@@ -119,7 +119,7 @@ export async function sendShipmentToWarehouse(salesOrderId: string, shipmentId: 
 
   if (shipError || !shipment) {
     console.error("Error loading shipment for sendShipmentToWarehouse", shipError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=packing-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=packing-error`);
   }
 
   // Make sure there is at least one line allocated
@@ -130,24 +130,58 @@ export async function sendShipmentToWarehouse(salesOrderId: string, shipmentId: 
 
   if (linesError) {
     console.error("Error loading shipment lines before send to warehouse", linesError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=packing-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=packing-error`);
   }
 
   if (!lines || lines.length === 0) {
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=no-lines`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=no-lines`);
+  }
+
+  // Load current status for validation
+  const { data: shipmentStatusRow, error: loadStatusError } = await serverSupabase
+    .from("so_shipments")
+    .select("status")
+    .eq("id", shipmentId)
+    .maybeSingle();
+
+  if (loadStatusError || !shipmentStatusRow) {
+    console.error("Error loading shipment before send to warehouse", loadStatusError);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=packing-error`);
+  }
+
+  const currentStatus = (shipmentStatusRow as any).status as string;
+  const newStatus = "processing";
+
+  const allowedTransitions: Record<string, string[]> = {
+    planned: ["processing", "cancelled"],
+    processing: ["ready", "cancelled"],
+    ready: ["shipped", "cancelled"],
+    shipped: [],
+    cancelled: [],
+  };
+
+  const allowed = allowedTransitions[currentStatus] ?? [];
+  if (!allowed.includes(newStatus)) {
+    const message =
+      currentStatus === "shipped" || currentStatus === "cancelled"
+        ? "Cannot modify a shipped or cancelled shipment"
+        : `Invalid status transition from ${currentStatus} to ${newStatus}`;
+
+    console.error(message);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=packing-error`);
   }
 
   const { error: statusError } = await serverSupabase
     .from("so_shipments")
-    .update({ status: "processing" })
+    .update({ status: newStatus })
     .eq("id", shipmentId);
 
   if (statusError) {
     console.error("Error updating shipment status to processing", statusError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=packing-error`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=packing-error`);
   }
 
-  redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=sent-to-warehouse`);
+  redirect(`/sales-orders/${salesOrderId}/sales-shipments/${shipmentId}?status=sent-to-warehouse`);
 }
 
 export async function deleteShipmentFromShipmentPage(
@@ -173,12 +207,12 @@ export async function deleteShipmentFromShipmentPage(
 
   if (loadError || !shipment || (shipment.sales_order_id as string) !== salesOrderId) {
     console.error("Error loading shipment for delete", loadError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${returnShipmentId}`);
   }
 
   // Only allow deleting planned shipments
   if (shipment.status !== "planned") {
-    redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${returnShipmentId}`);
   }
 
   // 1) Delete any dropship transfers that reference this shipment
@@ -189,7 +223,7 @@ export async function deleteShipmentFromShipmentPage(
 
   if (delDropshipError) {
     console.error("Error deleting dropship_transfers for shipment", delDropshipError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${returnShipmentId}`);
   }
 
   // 2) Delete child shipment lines
@@ -200,7 +234,7 @@ export async function deleteShipmentFromShipmentPage(
 
   if (delLinesError) {
     console.error("Error deleting shipment lines", delLinesError);
-    redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
+    redirect(`/sales-orders/${salesOrderId}/sales-shipments/${returnShipmentId}`);
   }
 
   // 3) Delete the shipment header
@@ -211,5 +245,5 @@ export async function deleteShipmentFromShipmentPage(
   }
 
   // After delete, stay on the currently viewed shipment page (returnShipmentId)
-  redirect(`/sales-orders/${salesOrderId}/shipments/${returnShipmentId}`);
+  redirect(`/sales-orders/${salesOrderId}/sales-shipments/${returnShipmentId}`);
 }

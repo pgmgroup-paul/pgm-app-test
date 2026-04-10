@@ -192,7 +192,7 @@ async function loadShipmentProducts(shipmentId: string, orderNumber?: string) {
     if (orderNumber) {
       const { data: moves, error: movesError } = await serverSupabase
         .from("inventory_movements")
-        .select("product_id, quantity_cases, movement_type, reason, order_number")
+        .select("product_id, quantity_cases, movement_type, reason, order_number, shipment_id")
         .in("product_id", productIds)
         .eq("order_number", orderNumber)
         .eq("movement_type", "deduct")
@@ -205,7 +205,13 @@ async function loadShipmentProducts(shipmentId: string, orderNumber?: string) {
       for (const m of moves || []) {
         const pid = (m as any).product_id as string;
         const qtyCases = Number((m as any).quantity_cases) || 0;
+        const sid = (m as any).shipment_id as string | null;
         if (!pid || qtyCases <= 0) continue;
+
+        const isThisShipment = sid === shipmentId;
+        const isLegacyForOrder = !sid && (m as any).order_number === orderNumber;
+        if (!isThisShipment && !isLegacyForOrder) continue;
+
         casesPickedByProduct.set(pid, (casesPickedByProduct.get(pid) || 0) + qtyCases);
       }
     }

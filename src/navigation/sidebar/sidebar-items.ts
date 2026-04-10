@@ -17,6 +17,7 @@ import {
   type LucideIcon,
   Package,
   ReceiptText,
+  Ship,
   ShoppingBag,
   SquareArrowUpRight,
   Truck,
@@ -142,12 +143,12 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         title: "Shipments",
-        url: "/shipments",
-        icon: Truck,
+        url: "/purchase-shipments",
+        icon: Ship,
       },
       {
         title: "Demand",
-        url: "/shipments/demand",
+        url: "/sales-shipments/demand",
         icon: ChartBar,
       },
     ],
@@ -229,6 +230,16 @@ export const sidebarItems: NavGroup[] = [
         title: "Sales orders",
         url: "/sales-orders",
         icon: ReceiptText,
+        subItems: [
+          {
+            title: "Manage SO",
+            url: "/sales-orders",
+          },
+          {
+            title: "SO Shipments",
+            url: "/sales-shipments",
+          },
+        ],
       },
     ],
   },

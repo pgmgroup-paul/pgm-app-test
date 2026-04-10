@@ -37,19 +37,24 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
     return { ok: false, error: "Quantity must be a positive number" };
   }
 
-  // Validation: do not allow picking more than remaining cases for this order/shipment
+  // Validation: do not allow picking on cancelled orders, and enforce remaining cases per shipment
   if (reason === "order" && shipmentId) {
     const supabase = serverSupabase;
 
     const { data: shipment, error: shipError } = await supabase
       .from("so_shipments")
-      .select("id, sales_order_id, sales_orders!inner(order_number)")
+      .select("id, sales_order_id, sales_orders!inner(order_number, status)")
       .eq("id", shipmentId)
       .maybeSingle();
 
     if (!shipError && shipment) {
       const so = (shipment as any).sales_orders as any;
+      const orderStatus = (so?.status as string) || "open";
       const orderNumber = (so?.order_number as string) || "";
+
+      if (orderStatus === "cancelled") {
+        return { ok: false, error: "Cannot process a cancelled order" };
+      }
 
       // Load total ordered (units) for this shipment+product
       const { data: soLines, error: soLinesError } = await supabase
@@ -81,12 +86,12 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
 
       const totalOrderedCases = unitsPerCase > 0 ? totalOrderedUnits / unitsPerCase : totalOrderedUnits;
 
-      // Load already picked (cases) for this order+product with reason=order
+      // Load already picked (cases) with shipment-aware + legacy fallback logic
       let alreadyPickedCases = 0;
       if (orderNumber) {
         const { data: moves, error: movesError } = await supabase
           .from("inventory_movements")
-          .select("quantity_cases")
+          .select("quantity_cases, order_number, shipment_id, movement_type, reason")
           .eq("product_id", productId)
           .eq("order_number", orderNumber)
           .eq("movement_type", "deduct")
@@ -94,7 +99,15 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
 
         if (!movesError) {
           for (const m of moves || []) {
-            alreadyPickedCases += Number((m as any).quantity_cases) || 0;
+            const qtyCases = Number((m as any).quantity_cases) || 0;
+            const sid = (m as any).shipment_id as string | null;
+            if (qtyCases <= 0) continue;
+
+            const isThisShipment = !!sid && sid === shipmentId;
+            const isLegacyForOrder = !sid && (m as any).order_number === orderNumber;
+            if (!isThisShipment && !isLegacyForOrder) continue;
+
+            alreadyPickedCases += qtyCases;
           }
         }
       }
@@ -187,6 +200,7 @@ export async function handleDeductMove(_prev: DeductMoveState, formData: FormDat
     p_reason: reason,
     p_note: noteAugmented,
     p_order_number: orderNumberForRpc || null,
+    p_shipment_id: shipmentId || null,
   });
 
   if (error) {

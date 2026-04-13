@@ -4,9 +4,6 @@ import { redirect } from "next/navigation";
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 
-import ContainerShipmentEventsSection from "./ContainerShipmentEventsSection";
-import ContainerTabs from "./ContainerTabs";
-
 export const dynamic = "force-dynamic";
 
 async function loadContainer(shipmentId: string, containerId: string) {
@@ -512,431 +509,132 @@ export default async function ShipmentContainerPage({
         </div>
       </div>
 
-      {/* Contents / Shipment events */}
-      <ContainerTabs
-        contents={
-          <>
-            <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-              {/* Contents tab: show planned allocations */}
-              {lines.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground">No products assigned to this container yet.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-[11px]">
-                    <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-                      <tr>
-                        <th className="py-1 pr-2 pl-3">PO #</th>
-                        <th className="px-2 py-1">SKU</th>
-                        <th className="px-2 py-1">Product</th>
-                        <th className="px-2 py-1 text-right">Qty (units)</th>
-                        <th className="px-2 py-1 text-right">Qty (cases)</th>
-                        <th className="px-2 py-1 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lines.map((l: any) => {
-                        const unitsPer = unitsPerMap.get(l.product_id as string) || 0;
-                        const units = Number(l.quantity_units) || 0;
-                        const cases = unitsPer > 0 ? units / unitsPer : null;
+      {/* Contents / Shipment summary and actions */}
+      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
+        {/* Contents: show planned allocations */}
+        {lines.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No products assigned to this container yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-2 pl-3">PO #</th>
+                  <th className="px-2 py-1">SKU</th>
+                  <th className="px-2 py-1">Product</th>
+                  <th className="px-2 py-1 text-right">Qty (units)</th>
+                  <th className="px-2 py-1 text-right">Qty (cases)</th>
+                  <th className="px-2 py-1 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((l: any) => {
+                  const unitsPer = unitsPerMap.get(l.product_id as string) || 0;
+                  const units = Number(l.quantity_units) || 0;
+                  const cases = unitsPer > 0 ? units / unitsPer : null;
 
-                        return (
-                          <tr key={l.id} className="border-b last:border-none">
-                            <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{l.po_number}</td>
-                            <td className="px-2 py-1 text-[11px]">{l.sku}</td>
-                            <td className="px-2 py-1 text-[11px]">{formatProductName(l.description as string)}</td>
-                            <td className="px-2 py-1 text-right text-[11px]">{units}</td>
-                            <td className="px-2 py-1 text-right text-[11px]">
-                              {cases != null ? cases.toFixed(2) : "-"}
-                            </td>
-                            <td className="px-2 py-1 text-right text-[11px]">
-                              <form
-                                action={async (formData: FormData) => {
-                                  "use server";
+                  return (
+                    <tr key={l.id} className="border-b last:border-none">
+                      <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{l.po_number}</td>
+                      <td className="px-2 py-1 text-[11px]">{l.sku}</td>
+                      <td className="px-2 py-1 text-[11px]">{formatProductName(l.description as string)}</td>
+                      <td className="px-2 py-1 text-right text-[11px]">{units}</td>
+                      <td className="px-2 py-1 text-right text-[11px]">
+                        {cases != null ? cases.toFixed(2) : "-"}
+                      </td>
+                      <td className="px-2 py-1 text-right text-[11px]">
+                        <form
+                          action={async (formData: FormData) => {
+                            "use server";
 
-                                  const profile = await getCurrentUserProfile();
+                            const profile = await getCurrentUserProfile();
 
-                                  if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
-                                    redirect("/unauthorized");
-                                  }
+                            if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+                              redirect("/unauthorized");
+                            }
 
-                                  const shipmentIdFromForm = (formData.get("shipment_id") || "").toString().trim();
-                                  const containerIdFromForm = (formData.get("shipment_container_id") || "")
-                                    .toString()
-                                    .trim();
-                                  const shipmentItemId = (formData.get("shipment_item_id") || "").toString().trim();
-                                  const poLineIdFromForm = (formData.get("purchase_order_line_id") || "")
-                                    .toString()
-                                    .trim();
-                                  const qtyRaw = (formData.get("quantity_units") || "").toString().trim();
+                            const shipmentIdFromForm = (formData.get("shipment_id") || "").toString().trim();
+                            const containerIdFromForm = (formData.get("shipment_container_id") || "")
+                              .toString()
+                              .trim();
+                            const shipmentItemId = (formData.get("shipment_item_id") || "").toString().trim();
+                            const poLineIdFromForm = (formData.get("purchase_order_line_id") || "")
+                              .toString()
+                              .trim();
+                            const qtyRaw = (formData.get("quantity_units") || "").toString().trim();
 
-                                  if (
-                                    !shipmentIdFromForm ||
-                                    !containerIdFromForm ||
-                                    !shipmentItemId ||
-                                    !poLineIdFromForm ||
-                                    !qtyRaw
-                                  ) {
-                                    redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
-                                  }
+                            if (!shipmentIdFromForm || !containerIdFromForm || !shipmentItemId || !poLineIdFromForm || !qtyRaw) {
+                              redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
+                            }
 
-                                  const qty = Number(qtyRaw);
+                            const qty = Number(qtyRaw);
 
-                                  // Load current shipped for the PO line
-                                  const { data: line, error: lineError } = await serverSupabase
-                                    .from("purchase_order_lines")
-                                    .select("id, quantity_shipped")
-                                    .eq("id", poLineIdFromForm)
-                                    .maybeSingle();
+                            // Load current shipped for the PO line
+                            const { data: line, error: lineError } = await serverSupabase
+                              .from("purchase_order_lines")
+                              .select("id, quantity_shipped")
+                              .eq("id", poLineIdFromForm)
+                              .maybeSingle();
 
-                                  if (lineError || !line) {
-                                    console.error("Error loading PO line for delete", lineError);
-                                    redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
-                                  }
+                            if (lineError || !line) {
+                              console.error("Error loading PO line for delete", lineError);
+                              redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
+                            }
 
-                                  const currentShipped = Number(line.quantity_shipped) || 0;
-                                  const newShipped = Math.max(currentShipped - qty, 0);
+                            const currentShipped = Number(line.quantity_shipped) || 0;
+                            const newShipped = Math.max(currentShipped - qty, 0);
 
-                                  const { error: delError } = await serverSupabase
-                                    .from("shipment_items")
-                                    .delete()
-                                    .eq("id", shipmentItemId);
+                            const { error: delError } = await serverSupabase
+                              .from("shipment_items")
+                              .delete()
+                              .eq("id", shipmentItemId);
 
-                                  if (delError) {
-                                    console.error("Error deleting shipment_item", delError);
-                                    redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
-                                  }
+                            if (delError) {
+                              console.error("Error deleting shipment_item", delError);
+                              redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
+                            }
 
-                                  const { error: updError } = await serverSupabase
-                                    .from("purchase_order_lines")
-                                    .update({ quantity_shipped: newShipped })
-                                    .eq("id", poLineIdFromForm);
+                            const { error: updError } = await serverSupabase
+                              .from("purchase_order_lines")
+                              .update({ quantity_shipped: newShipped })
+                              .eq("id", poLineIdFromForm);
 
-                                  if (updError) {
-                                    console.error("Error updating quantity_shipped on delete", updError);
-                                  }
+                            if (updError) {
+                              console.error("Error updating quantity_shipped on delete", updError);
+                            }
 
-                                  redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
-                                }}
-                                className="inline"
-                              >
-                                <input type="hidden" name="shipment_id" value={shipment.id as string} />
-                                <input type="hidden" name="shipment_container_id" value={container.id as string} />
-                                <input type="hidden" name="shipment_item_id" value={l.id as string} />
-                                <input
-                                  type="hidden"
-                                  name="purchase_order_line_id"
-                                  value={l.purchase_order_line_id as string}
-                                />
-                                <input type="hidden" name="quantity_units" value={units} />
-                                <button
-                                  type="submit"
-                                  className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] text-destructive hover:bg-destructive/10"
-                                >
-                                  Delete
-                                </button>
-                              </form>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                            redirect(`/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}`);
+                          }}
+                          className="inline"
+                        >
+                          <input type="hidden" name="shipment_id" value={shipment.id as string} />
+                          <input type="hidden" name="shipment_container_id" value={container.id as string} />
+                          <input type="hidden" name="shipment_item_id" value={l.id as string} />
+                          <input
+                            type="hidden"
+                            name="purchase_order_line_id"
+                            value={l.purchase_order_line_id as string}
+                          />
+                          <input type="hidden" name="quantity_units" value={units} />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] text-destructive hover:bg-destructive/10"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-            {/* Container limits (metric) */}
-            <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-              <div className="font-medium text-[11px]">Container limits (metric)</div>
-              <table className="w-full text-left text-[11px]">
-                <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-                  <tr>
-                    <th className="py-1 pr-2 pl-3">&nbsp;</th>
-                    <th className="px-2 py-1 text-right">Weight (kg)</th>
-                    <th className="px-2 py-1 text-right">Volume (m³)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-1 pr-2 pl-3 text-[11px]">Used</td>
-                    <td
-                      className={
-                        "px-2 py-1 text-right text-[11px]" +
-                        (totalWeightKg > 20000 ? "font-semibold text-destructive" : "")
-                      }
-                    >
-                      {totalWeightKg.toFixed(1)}
-                    </td>
-                    <td
-                      className={
-                        "px-2 py-1 text-right text-[11px]" +
-                        (totalVolumeM3 > 68 ? "font-semibold text-destructive" : "")
-                      }
-                    >
-                      {totalVolumeM3.toFixed(2)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-1 pr-2 pl-3 text-[11px]">Limit</td>
-                    <td className="px-2 py-1 text-right text-[11px]">20000</td>
-                    <td className="px-2 py-1 text-right text-[11px]">68.00</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Update container metadata */}
-            <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-              <div className="font-medium text-[11px]">Update container</div>
-              <form
-                action={async (formData: FormData) => {
-                  "use server";
-
-                  const profile = await getCurrentUserProfile();
-
-                  if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
-                    redirect("/unauthorized");
-                  }
-
-                  const containerIdFromForm = (formData.get("container_id") || "").toString().trim();
-                  const containerNumber = (formData.get("container_number") || "").toString().trim();
-                  const type = (formData.get("type") || "").toString().trim();
-                  const seal = (formData.get("seal_number") || "").toString().trim();
-                  const status = (formData.get("status") || "").toString().trim();
-
-                  if (!containerIdFromForm) {
-                    redirect(`/purchase-shipments/${shipmentId}/edit`);
-                  }
-
-                  const { error: updError } = await serverSupabase
-                    .from("shipment_containers")
-                    .update({
-                      container_number: containerNumber || null,
-                      type: type || null,
-                      seal_number: seal || null,
-                      status: status || "planned",
-                    })
-                    .eq("id", containerIdFromForm);
-
-                  if (updError) {
-                    console.error("Error updating shipment container", updError);
-                    redirect(`/purchase-shipments/${shipmentId}/containers/${containerIdFromForm}`);
-                  }
-
-                  // On success, stay on the same page and surface a success flag via search params.
-                  redirect(`/purchase-shipments/${shipmentId}/containers/${containerIdFromForm}?success=container-updated`);
-                }}
-                className="grid grid-cols-1 gap-3 sm:grid-cols-5"
-              >
-                <input type="hidden" name="container_id" value={container.id as string} />
-                <div className="space-y-1">
-                  <label htmlFor="container_number" className="font-medium text-[11px]">
-                    Container #
-                  </label>
-                  <input
-                    id="container_number"
-                    name="container_number"
-                    type="text"
-                    defaultValue={container.container_number ?? ""}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="type" className="font-medium text-[11px]">
-                    Type
-                  </label>
-                  <input
-                    id="type"
-                    name="type"
-                    type="text"
-                    defaultValue={container.type ?? ""}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="seal_number" className="font-medium text-[11px]">
-                    Seal
-                  </label>
-                  <input
-                    id="seal_number"
-                    name="seal_number"
-                    type="text"
-                    defaultValue={container.seal_number ?? ""}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="status" className="font-medium text-[11px]">
-                    Status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={container.status as string}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="planned">Planned</option>
-                    <option value="loaded">Loaded</option>
-                    <option value="gate_out">Gate out</option>
-                    <option value="on_water">On water</option>
-                    <option value="arrived">Arrived</option>
-                    <option value="unloaded">Unloaded</option>
-                    <option value="received">Received</option>
-                    <option value="returned">Returned</option>
-                  </select>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <button
-                    type="submit"
-                    className="inline-flex w-full items-center justify-center rounded-md border px-3 py-1.5 font-medium text-[11px] hover:bg-muted"
-                  >
-                    Save container
-                  </button>
-                  {containerUpdateSuccess && <p className="text-[11px] text-emerald-700">Container updated</p>}
-                </div>
-              </form>
-            </div>
-
-            {/* Add product from PO */}
-            <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-              <div className="font-medium text-[11px]">Add product from PO</div>
-
-              {/* PO selector */}
-              <form method="GET" className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
-                <div className="space-y-1 sm:col-span-3">
-                  <label htmlFor="po_number" className="font-medium text-[11px]">
-                    Purchase order (for line picker)
-                  </label>
-                  <select
-                    id="po_number"
-                    name="po_number"
-                    defaultValue={currentPoNumber ?? ""}
-                    className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="">Select open PO…</option>
-                    {poOptions.map((num) => (
-                      <option key={num} value={num}>
-                        {poLabelMap.get(num) ?? num}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-end">
-                  <button
-                    type="submit"
-                    className="inline-flex w-full items-center justify-center rounded-md border px-3 py-1.5 font-medium text-[11px] hover:bg-muted"
-                  >
-                    Load PO lines
-                  </button>
-                </div>
-              </form>
-
-              {currentPoNumber && poLines.length > 0 && (
-                <form
-                  action={async (formData: FormData) => {
-                    "use server";
-
-                    const profile = await getCurrentUserProfile();
-
-                    if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
-                      redirect("/unauthorized");
-                    }
-
-                    const shipmentIdFromForm = (formData.get("shipment_id") || "").toString().trim();
-                    const containerIdFromForm = (formData.get("shipment_container_id") || "").toString().trim();
-                    const poNumberFromForm = (formData.get("po_number") || "").toString().trim();
-
-                    // Find the first qty_* field with a positive number; that's the selected line
-                    let poLineId = "";
-                    let qtyRaw = "";
-                    for (const [key, value] of formData.entries()) {
-                      if (!key.startsWith("qty_")) continue;
-                      const v = (value || "").toString().trim();
-                      if (!v) continue;
-                      const n = Number(v);
-                      if (!Number.isFinite(n) || n <= 0) continue;
-                      poLineId = key.replace("qty_", "");
-                      qtyRaw = v;
-                      break;
-                    }
-
-                    if (!shipmentIdFromForm || !containerIdFromForm || !poLineId || !qtyRaw) {
-                      redirect(
-                        `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}&error=missing-fields`,
-                      );
-                    }
-
-                    const qty = Number(qtyRaw);
-                    if (!Number.isFinite(qty) || qty <= 0) {
-                      redirect(
-                        `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}&error=bad-qty`,
-                      );
-                    }
-
-                    const { data: line, error: lineError } = await serverSupabase
-                      .from("purchase_order_lines")
-                      .select("id, purchase_order_id, quantity_cases, quantity_shipped, quantity_received")
-                      .eq("id", poLineId)
-                      .maybeSingle();
-
-                    if (lineError || !line) {
-                      console.error("Error loading PO line for allocation", lineError);
-                      redirect(
-                        `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}&error=load-line`,
-                      );
-                    }
-
-                    const currentShipped = Number(line.quantity_shipped) || 0;
-                    const currentReceived = Number(line.quantity_received) || 0;
-                    const orderedUnits = Number(line.quantity_cases) || 0; // treat as units for now
-
-                    const maxUnitsFromOrder = orderedUnits;
-                    const alreadyAllocatedUnits = currentShipped;
-                    const alreadyReceivedUnits = currentReceived;
-
-                    const totalIfAllocated = alreadyAllocatedUnits + qty;
-                    const totalIncludingReceived = alreadyAllocatedUnits + alreadyReceivedUnits + qty;
-
-                    if (maxUnitsFromOrder > 0 && totalIfAllocated > maxUnitsFromOrder) {
-                      redirect(
-                        `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}&error=over-order`,
-                      );
-                    }
-
-                    if (maxUnitsFromOrder > 0 && totalIncludingReceived > maxUnitsFromOrder) {
-                      redirect(
-                        `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}&error=over-order-inc-received`,
-                      );
-                    }
-
-                    const { error: insError } = await serverSupabase.from("shipment_items").insert({
-                      shipment_container_id: containerIdFromForm,
-                      purchase_order_line_id: poLineId,
-                      quantity: qty,
-                    });
-
-                    if (insError) {
-                      console.error("Error inserting shipment_item", insError);
-                      redirect(
-                        `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}&error=insert-item`,
-                      );
-                    }
-
-                    const { error: updError } = await serverSupabase
-                      .from("purchase_order_lines")
-                      .update({ quantity_shipped: alreadyAllocatedUnits + qty })
-                      .eq("id", poLineId);
-
-                    if (updError) {
-                      console.error("Error updating quantity_shipped", updError);
-                    }
-
-                    redirect(
-                      `/purchase-shipments/${shipmentIdFromForm}/containers/${containerIdFromForm}?po_number=${poNumberFromForm}`,
-                    );
-                  }}
-                >
-                  <input type="hidden" name="shipment_id" value={shipment.id as string} />
+      {/* Container limits (metric) */}
+      <div className=                  <input type="hidden" name="shipment_id" value={shipment.id as string} />
                   <input type="hidden" name="shipment_container_id" value={container.id as string} />
                   <input type="hidden" name="po_number" value={currentPoNumber} />
 
@@ -1009,10 +707,9 @@ export default async function ShipmentContainerPage({
                 </form>
               )}
             </div>
-          </>
-        }
-        events={<ContainerShipmentEventsSection shipmentContainerId={container.id as string} />}
-      />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

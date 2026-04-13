@@ -41,25 +41,50 @@ export interface ContainerContentsState {
 }
 
 export async function loadReceivingContainers(): Promise<ReceivingContainersState> {
-  const { data, error } = await serverSupabase
-    .from("shipment_containers")
-    .select(`id, container_number, status, shipment:shipments!inner(eta)`)
-    .eq("status", "received")
+  const supabase = serverSupabase;
+
+  const { data: containers, error } = await supabase
+    .from("containers_v2")
+    .select("id, container_number, shipment_id")
+    .eq("status", "Delivered")
     .order("created_at", { ascending: true });
 
   if (error) {
     console.error("Error loading receiving containers", error);
-    return { ok: false, error: "Error loading containers" };
+    return { ok: false, error: error.message || "Error loading containers" };
   }
+
+  const shipmentIds = (containers ?? [])
+    .map((c: any) => c.shipment_id as string | null)
+    .filter((id): id is string => !!id);
+
+  let shipmentMap = new Map<string, any>();
+
+  if (shipmentIds.length > 0) {
+    const { data: shipments, error: shipError } = await supabase
+      .from("shipments_v2")
+      .select("id, eta")
+      .in("id", shipmentIds);
+
+    if (shipError) {
+      console.error("Error loading shipments_v2 for receiving containers", shipError);
+    }
+
+    shipmentMap = new Map<string, any>(
+      (shipments ?? []).map((s: any) => [s.id as string, s]),
+    );
+  }
+
+  const rows = (containers ?? []).map((c: any) => ({
+    id: c.id as string,
+    code: (c.container_number as string) ?? "(no number)",
+    eta: (shipmentMap.get(c.shipment_id as string)?.eta as string | null) ?? null,
+    vendor_name: null,
+  }));
 
   return {
     ok: true,
-    containers: (data || []).map((c: any) => ({
-      id: c.id as string,
-      code: (c.container_number as string) || "",
-      eta: (c.shipment?.eta as string) || null,
-      vendor_name: null,
-    })),
+    containers: rows,
   };
 }
 
@@ -75,19 +100,19 @@ export async function loadContainerContents(
 
   const supabase = serverSupabase;
 
-  // Resolve container code from shipment_containers
-  const { data: container, error: contError } = await supabase
-    .from("shipment_containers")
-    .select("id, container_number, shipment_id")
+  // Resolve container_number from containers_v2 using the inbound container id
+  const { data: containerV2, error: contV2Error } = await supabase
+    .from("containers_v2")
+    .select("container_number")
     .eq("id", containerId)
-    .maybeSingle();
+    .single();
 
-  if (contError || !container) {
-    console.error("Error resolving container for contents", contError);
+  if (contV2Error || !containerV2) {
+    console.error("Error resolving containers_v2 row for contents", contV2Error);
     return { ok: false, error: "Container not found" };
   }
 
-  const code = container.container_number as string;
+  const code = containerV2.container_number as string;
 
   // Sum received quantity per product from inventory_movements for this container.
   // For now we only count add movements; corrections will be handled later when
@@ -104,24 +129,67 @@ export async function loadContainerContents(
     return { ok: false, error: "Error loading container contents" };
   }
 
-  // Expected quantity per product from shipment_items for this shipment container
-  const { data: shipItems, error: shipError } = await supabase
-    .from("shipment_items")
-    .select("quantity, purchase_order_lines ( product_id )")
-    .eq("shipment_container_id", containerId);
+  // Expected quantity per product from container_items_v2 + purchase_order_lines
+  const { data: items, error: itemsError } = await supabase
+    .from("container_items_v2")
+    .select("purchase_order_line_id, quantity, units_per")
+    .eq("container_id", containerId);
 
-  if (shipError) {
-    console.error("Error loading shipment_items for container", shipError);
+  if (itemsError) {
+    console.error("Error loading container_items_v2 for container", itemsError);
     return { ok: false, error: "Error loading expected quantities" };
   }
 
+  const purchaseOrderLineIds = Array.from(
+    new Set(
+      (items || [])
+        .map((it: any) => (it.purchase_order_line_id as string) || "")
+        .filter(Boolean),
+    ),
+  );
+
   const expectedMap = new Map<string, number>();
-  for (const it of shipItems || []) {
-    const line = (it as any).purchase_order_lines;
-    const pid = line?.product_id as string;
-    const qty = Number((it as any).quantity) || 0;
-    if (!pid || qty <= 0) continue;
-    expectedMap.set(pid, (expectedMap.get(pid) || 0) + qty);
+  const productMap = new Map<string, any>();
+
+  if (purchaseOrderLineIds.length > 0) {
+    const { data: polines, error: poError } = await supabase
+      .from("purchase_order_lines")
+      .select("id, product_id, sku, sku_var, description")
+      .in("id", purchaseOrderLineIds);
+
+    if (poError) {
+      console.error("Error loading purchase_order_lines for container contents", poError);
+      return { ok: false, error: "Error loading expected quantities" };
+    }
+
+    const poById = new Map<string, any>();
+    for (const line of polines || []) {
+      poById.set((line as any).id as string, line);
+    }
+
+    for (const row of items || []) {
+      const r = row as any;
+      const poLineId = (r.purchase_order_line_id as string) || "";
+      const poLine = poById.get(poLineId) as any | undefined;
+      if (!poLine) continue;
+
+      const pid = (poLine.product_id as string) || "";
+      const qty = Number(r.quantity) || 0;
+      const unitsPer = Number(r.units_per) || 0;
+      if (!pid || qty <= 0 || unitsPer <= 0) continue;
+
+      const expectedUnits = qty * unitsPer;
+      expectedMap.set(pid, (expectedMap.get(pid) || 0) + expectedUnits);
+
+      if (!productMap.has(pid)) {
+        productMap.set(pid, {
+          id: pid,
+          sku: (poLine.sku as string) || "",
+          sku_var: (poLine.sku_var as string) || null,
+          product_name: (poLine.description as string) || "",
+        });
+      }
+    }
   }
 
   // Aggregate received cases by product_id
@@ -145,19 +213,7 @@ export async function loadContainerContents(
     };
   }
 
-  const { data: products, error: prodError } = await supabase
-    .from("products")
-    .select("id, sku, sku_var, product_name")
-    .in("id", productIds);
-
-  if (prodError) {
-    console.error("Error loading products for container contents", prodError);
-  }
-
-  const productMap = new Map<string, any>();
-  for (const p of products || []) {
-    productMap.set(p.id as string, p);
-  }
+  // productMap is built from container_items_v2 join on products above; no extra products query needed here.
 
   // Load loose pieces moved to dropship from this container
   const { data: dropshipRows, error: dropshipError } = await supabase

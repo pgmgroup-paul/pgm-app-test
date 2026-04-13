@@ -14,14 +14,9 @@ interface ReceivingContainerRow {
 
 async function loadReceivingContainersList(): Promise<ReceivingContainerRow[]> {
   const { data, error } = await serverSupabase
-    .from("shipment_containers")
-    .select(
-      `id,
-       container_number,
-       status,
-       shipment:shipments!inner(eta)`,
-    )
-    .eq("status", "received")
+    .from("containers_v2")
+    .select("id, container_number, eta")
+    .ilike("status", "delivered")
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -32,7 +27,7 @@ async function loadReceivingContainersList(): Promise<ReceivingContainerRow[]> {
   const containers = (data || []).map((c: any) => ({
     id: c.id as string,
     code: (c.container_number as string) || "",
-    eta: (c.shipment?.eta as string) || null,
+    eta: (c.eta as string) || null,
   }));
 
   if (containers.length === 0) return [];

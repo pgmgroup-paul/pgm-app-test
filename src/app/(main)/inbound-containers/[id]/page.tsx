@@ -63,6 +63,7 @@ export default function InboundContainerDetailPage() {
 
   const [detail, setDetail] = useState<InboundContainerDetail | null>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [snapshotItems, setSnapshotItems] = useState<any[]>([]);
   const [forwarderInfo, setForwarderInfo] = useState<{
     forwarder: string;
     quoteRate: string;
@@ -399,12 +400,26 @@ export default function InboundContainerDetailPage() {
 
       setDetail(data as InboundContainerDetail);
 
+      console.log("DETAIL STATUS:", (data as any)?.status);
+
       // Load contents (items_detail) from inbound_containers_list
       const { data: listData, error: listError } = await supabase
         .from("inbound_containers_list")
         .select("items_detail")
         .eq("container_id", containerId)
         .maybeSingle();
+
+      if (listError) {
+        console.error(
+          "Error loading inbound_containers_list for items_detail",
+          listError,
+        );
+        setItems([]);
+      } else {
+        const itemsDetail = (listData as any)?.items_detail || [];
+        console.log("itemsDetail:", itemsDetail);
+        setItems(itemsDetail as ContainerItemDetail[]);
+      }
 
       // Load forwarder cost (single row)
       const { data: forwarderData } = await supabase
@@ -424,18 +439,6 @@ export default function InboundContainerDetailPage() {
         });
       } else {
         setForwarderInfo({ forwarder: "", quoteRate: "", notes: "" });
-      }
-
-      if (listError) {
-        console.error(
-          "Error loading inbound_containers_list for items_detail",
-          listError,
-        );
-        setItems([]);
-      } else {
-        const itemsDetail = (listData as any)?.items_detail || [];
-        console.log("itemsDetail:", itemsDetail);
-        setItems(itemsDetail as ContainerItemDetail[]);
       }
 
       // Load forwarder payments for this container
@@ -490,12 +493,102 @@ export default function InboundContainerDetailPage() {
     }
   };
 
+  const normalizedStatus = (detail?.status || "").toLowerCase().trim();
+  const isUnloaded = normalizedStatus === "unloaded";
+  console.log("normalizedStatus:", normalizedStatus);
+  console.log("FINAL isUnloaded:", isUnloaded);
+
   useEffect(() => {
     console.log("useEffect triggered", containerId);
     if (!containerId) return;
     loadContainer();
     fetchDeliveryPayments(containerId);
   }, [containerId]);
+
+  useEffect(() => {
+    if (!containerId) {
+      console.log("Skipping snapshot: no containerId");
+      return;
+    }
+    if (!isUnloaded) {
+      console.log("Skipping snapshot: not unloaded");
+      return;
+    }
+    if (!detail?.container_id) {
+      console.log("No container_id yet, skipping snapshot");
+      return;
+    }
+
+    console.log("Using container_id for snapshot:", detail?.container_id);
+
+    const loadSnapshot = async () => {
+      // Step 1: get latest receipt
+      const { data: receipts, error: receiptError } = await supabase
+        .from("container_receipts")
+        .select("id")
+        .eq("container_id", detail?.container_id)
+        .order("received_at", { ascending: false })
+        .limit(1);
+
+      const receipt = (receipts as any)?.[0] || null;
+      console.log("RECEIPTS:", receipts);
+
+      if (receiptError) {
+        console.error("Error loading container_receipts snapshot", receiptError);
+        setSnapshotItems([]);
+      } else {
+        console.log("RECEIPT:", receipt);
+
+        if (!receipt) {
+          setSnapshotItems([]);
+        } else {
+          // Step 2: get receipt lines
+          const { data: lines, error: linesError } = await supabase
+            .from("container_receipt_lines")
+            .select(
+              `
+              sku,
+              product_name,
+              quantity_expected_units,
+              quantity_received_units,
+              quantity_received_cases,
+              loose_pieces_received
+            `,
+            )
+            .eq("container_receipt_id", (receipt as any).id);
+
+          if (linesError) {
+            console.error("Error loading container_receipt_lines", linesError);
+            setSnapshotItems([]);
+          } else {
+            console.log("RECEIPT LINES:", lines);
+
+            // Step 3: map
+            const mapped = (lines || []).map((l: any) => {
+              const totalReceived =
+                (l.quantity_received_units || 0) +
+                (l.loose_pieces_received || 0);
+              return {
+                sku: l.sku,
+                product_name: l.product_name,
+                expected: l.quantity_expected_units,
+                received: l.quantity_received_units,
+                loose: l.loose_pieces_received,
+                total: totalReceived,
+                discrepancy:
+                  totalReceived - (l.quantity_expected_units || 0),
+              };
+            });
+
+            console.log("SNAPSHOT ITEMS:", mapped);
+            setSnapshotItems(mapped);
+          }
+        }
+      }
+    };
+
+    loadSnapshot();
+  }, [containerId, isUnloaded]);
 
   const [form, setForm] = useState({
     terminal: "",
@@ -1239,7 +1332,40 @@ export default function InboundContainerDetailPage() {
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <h3 className="mb-3 text-[13px] font-semibold text-slate-900">Contents</h3>
 
-          {items.length === 0 ? (
+          {isUnloaded ? (
+            snapshotItems.length === 0 ? (
+              <div className="text-[11px] text-slate-500">
+                No snapshot items found for this container.
+              </div>
+            ) : (
+              <table className="w-full border-separate border-spacing-y-1 text-[11px]">
+                <thead>
+                  <tr className="text-left text-slate-500">
+                    <th className="px-2 py-1">SKU</th>
+                    <th className="px-2 py-1">Product</th>
+                    <th className="px-2 py-1 text-right">Expected</th>
+                    <th className="px-2 py-1 text-right">Received</th>
+                    <th className="px-2 py-1 text-right">Loose</th>
+                    <th className="px-2 py-1 text-right">Total</th>
+                    <th className="px-2 py-1 text-right">Discrepancy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshotItems.map((item, idx) => (
+                    <tr key={idx} className="rounded bg-slate-50">
+                      <td className="px-2 py-1 align-top">{item.sku}</td>
+                      <td className="px-2 py-1 align-top">{item.product_name}</td>
+                      <td className="px-2 py-1 text-right align-top">{item.expected}</td>
+                      <td className="px-2 py-1 text-right align-top">{item.received}</td>
+                      <td className="px-2 py-1 text-right align-top">{item.loose}</td>
+                      <td className="px-2 py-1 text-right align-top">{item.total}</td>
+                      <td className="px-2 py-1 text-right align-top">{item.discrepancy}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          ) : items.length === 0 ? (
             <div className="text-[11px] text-slate-500">No items found for this container.</div>
           ) : (
             <table className="w-full border-separate border-spacing-y-1 text-[11px]">

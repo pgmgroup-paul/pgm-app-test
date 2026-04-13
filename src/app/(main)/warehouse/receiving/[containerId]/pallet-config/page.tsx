@@ -24,52 +24,58 @@ interface PalletConfigRow {
 async function loadContainerPalletConfig(
   containerId: string,
 ): Promise<{ code: string; rows: PalletConfigRow[] } | null> {
-  // Resolve container and shipment id
-  const { data: container, error: contError } = await serverSupabase
-    .from("shipment_containers")
-    .select("id, container_number, shipment_id")
-    .eq("id", containerId)
-    .maybeSingle();
+  const supabase = serverSupabase;
 
-  if (contError || !container) {
-    console.error("Error resolving container for pallet config", contError);
+  // Load container items to get purchase_order_line_ids and product ids
+  const { data: items, error: itemsError } = await supabase
+    .from("container_items_v2")
+    .select("purchase_order_line_id, sku_id")
+    .eq("container_id", containerId);
+
+  if (itemsError) {
+    console.error("Error loading container_items_v2 for pallet config", itemsError);
     return null;
   }
 
-  const code = (container.container_number as string) || "";
+  const purchaseOrderLineIds = Array.from(
+    new Set(
+      (items || [])
+        .map((it: any) => (it.purchase_order_line_id as string) || "")
+        .filter(Boolean),
+    ),
+  );
 
-  // Load products in this container via shipment_items -> purchase_order_lines
-  const { data: items, error: itemsError } = await serverSupabase
-    .from("shipment_items")
-    .select(
-      `purchase_order_lines!inner(
-         product_id,
-         sku,
-         sku_var,
-         description
-       )`,
-    )
-    .eq("shipment_container_id", containerId);
+  if (purchaseOrderLineIds.length === 0) {
+    return { code: containerId, rows: [] };
+  }
 
-  if (itemsError) {
-    console.error("Error loading shipment_items for pallet config", itemsError);
-    return { code, rows: [] };
+  // Load PO lines to resolve products for this container
+  const { data: polines, error: poError } = await supabase
+    .from("purchase_order_lines")
+    .select("id, product_id, sku, sku_var, description")
+    .in("id", purchaseOrderLineIds);
+
+  if (poError) {
+    console.error("Error loading purchase_order_lines for pallet config", poError);
+    return { code: containerId, rows: [] };
   }
 
   const productMap = new Map<string, { sku: string; sku_var: string | null; product_name: string }>();
 
-  for (const it of items || []) {
-    const line = (it as any).purchase_order_lines as any;
-    if (!line || !line.product_id) continue;
-    const pid = line.product_id as string;
+  for (const line of polines || []) {
+    const row = line as any;
+    const pid = (row.product_id as string) || "";
+    if (!pid) continue;
     if (!productMap.has(pid)) {
       productMap.set(pid, {
-        sku: (line.sku as string) || "",
-        sku_var: (line.sku_var as string) || null,
-        product_name: (line.description as string) || "",
+        sku: (row.sku as string) || "",
+        sku_var: (row.sku_var as string) || null,
+        product_name: (row.description as string) || "",
       });
     }
   }
+
+  const code = containerId; // label for header
 
   const productIds = Array.from(productMap.keys());
 

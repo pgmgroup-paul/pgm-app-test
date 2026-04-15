@@ -83,7 +83,7 @@ export default async function PurchaseOrdersPage({
           <p className="text-muted-foreground text-sm">Create and review purchase orders.</p>
         </div>
         <Link
-          href="/purchase-orders/new"
+          href="/purchase-orders/new-v2"
           className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-xs hover:bg-primary/90"
         >
           New PO
@@ -162,34 +162,64 @@ export default async function PurchaseOrdersPage({
                 <th className="px-2 py-2">Ship date</th>
                 <th className="px-2 py-2">ETA</th>
                 <th className="px-2 py-2">Created</th>
-                <th className="px-2 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="text-xs">
               {pos.map((po) => (
-                <tr key={po.id} className="border-b last:border-none">
-                  <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{po.po_number}</td>
-                  <td className="px-2 py-1 text-[11px]">{po.supplier}</td>
-                  <td className="px-2 py-1 text-[11px] capitalize">{po.status}</td>
-                  <td className="px-2 py-1 text-[11px]">
-                    {po.ship_date ? new Date(po.ship_date).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="px-2 py-1 text-[11px]">{po.eta ? new Date(po.eta).toLocaleDateString() : "-"}</td>
-                  <td className="px-2 py-1 text-[11px]">
-                    {po.created_at ? new Date(po.created_at).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="space-x-1 px-2 py-1 text-right text-[11px]">
+                <tr
+                  key={po.id}
+                  className="border-b last:border-none cursor-pointer hover:bg-gray-50"
+                >
+                  <td className="py-1 pr-2 pl-3 font-mono text-[11px]">
                     <Link
-                      href={`/purchase-orders/${po.id}`}
-                      className="inline-flex items-center rounded-md border px-2 py-1 text-[11px] hover:bg-muted"
+                      href={`/purchase-orders/new-v2?id=${po.id}`}
+                      className="block w-full"
                     >
-                      View
+                      {po.po_number}
                     </Link>
+                  </td>
+                  <td className="px-2 py-1 text-[11px]">
                     <Link
-                      href={`/purchase-orders/${po.id}/edit`}
-                      className="inline-flex items-center rounded-md border px-2 py-1 text-[11px] hover:bg-muted"
+                      href={`/purchase-orders/new-v2?id=${po.id}`}
+                      className="block w-full"
                     >
-                      Edit
+                      {po.supplier}
+                    </Link>
+                  </td>
+                  <td className="px-2 py-1 text-[11px] capitalize">
+                    <Link
+                      href={`/purchase-orders/new-v2?id=${po.id}`}
+                      className="block w-full"
+                    >
+                      {po.status}
+                    </Link>
+                  </td>
+                  <td className="px-2 py-1 text-[11px]">
+                    <Link
+                      href={`/purchase-orders/new-v2?id=${po.id}`}
+                      className="block w-full"
+                    >
+                      {po.ship_date
+                        ? new Date(po.ship_date).toLocaleDateString()
+                        : "-"}
+                    </Link>
+                  </td>
+                  <td className="px-2 py-1 text-[11px]">
+                    <Link
+                      href={`/purchase-orders/new-v2?id=${po.id}`}
+                      className="block w-full"
+                    >
+                      {po.eta ? new Date(po.eta).toLocaleDateString() : "-"}
+                    </Link>
+                  </td>
+                  <td className="px-2 py-1 text-[11px]">
+                    <Link
+                      href={`/purchase-orders/new-v2?id=${po.id}`}
+                      className="block w-full"
+                    >
+                      {po.created_at
+                        ? new Date(po.created_at).toLocaleDateString()
+                        : "-"}
                     </Link>
                   </td>
                 </tr>

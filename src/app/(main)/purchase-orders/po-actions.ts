@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
@@ -33,6 +34,7 @@ export async function createPurchaseOrder(formData: FormData): Promise<void> {
       ship_date,
       eta,
       notes: notes || null,
+      status: "open",
     })
     .select("id")
     .single();
@@ -42,7 +44,78 @@ export async function createPurchaseOrder(formData: FormData): Promise<void> {
     redirect("/purchase-orders/new?error=create-failed");
   }
 
-  redirect(`/purchase-orders/${data.id}/edit`);
+  redirect(`/purchase-orders/new-v2?id=${data.id}`);
+}
+
+export async function closePurchaseOrder(formData: FormData): Promise<void> {
+  const profile = await getCurrentUserProfile();
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+    redirect("/unauthorized");
+  }
+
+  const id = (formData.get("id") || "").toString().trim();
+
+  if (!id) {
+    redirect("/purchase-orders/new-v2?error=missing-id");
+  }
+
+  const { error } = await serverSupabase
+    .from("purchase_orders")
+    .update({ status: "closed" })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error closing purchase order", error);
+    redirect(`/purchase-orders/new-v2?id=${id}&error=close-failed`);
+  }
+
+  redirect(`/purchase-orders/new-v2?id=${id}`);
+}
+
+export async function updatePurchaseOrder(formData: FormData): Promise<void> {
+  const profile = await getCurrentUserProfile();
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+    redirect("/unauthorized");
+  }
+
+  const id = (formData.get("id") || "").toString().trim();
+  const supplier = (formData.get("supplier") || "").toString().trim();
+  const terms = (formData.get("terms") || "").toString().trim();
+  const shipDateRaw = (formData.get("ship_date") || "").toString().trim();
+  const etaRaw = (formData.get("eta") || "").toString().trim();
+  const notes = (formData.get("notes") || "").toString().trim();
+
+  if (!id) {
+    redirect("/purchase-orders/new-v2?error=missing-id");
+  }
+
+  if (!supplier) {
+    redirect(`/purchase-orders/new-v2?id=${id}&error=missing-supplier`);
+  }
+
+  const ship_date = shipDateRaw || null;
+  const eta = etaRaw || null;
+
+  const { error } = await serverSupabase
+    .from("purchase_orders")
+    .update({
+      supplier: supplier || null,
+      terms: terms || null,
+      ship_date,
+      eta,
+      notes: notes || null,
+      status: "open",
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error updating purchase order", error);
+    redirect(`/purchase-orders/new-v2?id=${id}&error=update-failed`);
+  }
+
+  redirect(`/purchase-orders`);
 }
 
 export async function addPurchaseOrderLine(formData: FormData): Promise<{ ok: boolean | null; error?: string }> {
@@ -58,6 +131,7 @@ export async function addPurchaseOrderLine(formData: FormData): Promise<{ ok: bo
   const qtyRaw = (formData.get("quantity_cases") || "").toString().trim();
   const priceRaw = (formData.get("price") || "").toString().trim();
   const volumeRaw = (formData.get("sku_volume_m3") || "").toString().trim();
+  const returnTo = (formData.get("return_to") || "").toString();
 
   if (!purchaseOrderId) {
     return { ok: false, error: "Missing purchase order" };
@@ -113,7 +187,50 @@ export async function addPurchaseOrderLine(formData: FormData): Promise<{ ok: bo
     redirect(`/purchase-orders/${purchaseOrderId}/edit?error=failed-to-add-line`);
   }
 
-  redirect(`/purchase-orders/${purchaseOrderId}/edit`);
+  if (returnTo === "new-v2") {
+    redirect(`/purchase-orders/new-v2?id=${purchaseOrderId}`);
+  } else {
+    redirect(`/purchase-orders/${purchaseOrderId}/edit`);
+  }
+}
+
+export async function updatePurchaseOrderLineQuantity(formData: FormData): Promise<{ ok: boolean | null; error?: string }> {
+  const profile = await getCurrentUserProfile();
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+    return { ok: false, error: "Not authorized" };
+  }
+
+  const lineId = (formData.get("line_id") || "").toString().trim();
+  const poId = (formData.get("purchase_order_id") || "").toString().trim();
+  const qtyRaw = (formData.get("quantity_cases") || "").toString().trim();
+  const returnTo = (formData.get("return_to") || "").toString();
+
+  if (!lineId || !poId || !qtyRaw) {
+    return { ok: false, error: "Missing data for update" };
+  }
+
+  const quantity = Number(qtyRaw);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return { ok: false, error: "Quantity must be a positive number" };
+  }
+
+  const { error } = await serverSupabase
+    .from("purchase_order_lines")
+    .update({ quantity_cases: quantity })
+    .eq("id", lineId);
+
+  if (error) {
+    console.error("Error updating PO line quantity", error);
+    return { ok: false, error: "Failed to update line" };
+  }
+
+  if (returnTo === "new-v2") {
+    revalidatePath("/purchase-orders/new-v2");
+    redirect(`/purchase-orders/new-v2?id=${poId}&refresh=${Date.now()}`);
+  } else {
+    redirect(`/purchase-orders/${poId}/edit`);
+  }
 }
 
 export async function deletePurchaseOrderLine(formData: FormData): Promise<{ ok: boolean | null; error?: string }> {
@@ -125,6 +242,7 @@ export async function deletePurchaseOrderLine(formData: FormData): Promise<{ ok:
 
   const lineId = (formData.get("line_id") || "").toString().trim();
   const poId = (formData.get("purchase_order_id") || "").toString().trim();
+  const returnTo = (formData.get("return_to") || "").toString();
 
   if (!lineId || !poId) {
     return { ok: false, error: "Missing line or purchase order" };
@@ -137,5 +255,9 @@ export async function deletePurchaseOrderLine(formData: FormData): Promise<{ ok:
     return { ok: false, error: "Failed to remove line" };
   }
 
-  redirect(`/purchase-orders/${poId}/edit`);
+  if (returnTo === "new-v2") {
+    redirect(`/purchase-orders/new-v2?id=${poId}`);
+  } else {
+    redirect(`/purchase-orders/${poId}/edit`);
+  }
 }

@@ -47,7 +47,12 @@ const NavItemExpanded = ({
   isSubmenuOpen: (subItems?: NavMainItem["subItems"]) => boolean;
 }) => {
   return (
-    <Collapsible key={item.title} asChild defaultOpen={isSubmenuOpen(item.subItems)} className="group/collapsible">
+    <Collapsible
+      key={`${item.url}-${item.title}`}
+      asChild
+      defaultOpen={isSubmenuOpen(item.subItems)}
+      className="group/collapsible"
+    >
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           {item.subItems ? (
@@ -80,7 +85,7 @@ const NavItemExpanded = ({
           <CollapsibleContent>
             <SidebarMenuSub>
               {item.subItems.map((subItem) => (
-                <SidebarMenuSubItem key={subItem.title}>
+                <SidebarMenuSubItem key={subItem.url}>
                   <SidebarMenuSubButton aria-disabled={subItem.comingSoon} isActive={isActive(subItem.url)} asChild>
                     <Link prefetch={false} href={subItem.url} target={subItem.newTab ? "_blank" : undefined}>
                       {subItem.icon && <subItem.icon />}
@@ -106,7 +111,7 @@ const NavItemCollapsed = ({
   isActive: (url: string, subItems?: NavMainItem["subItems"]) => boolean;
 }) => {
   return (
-    <SidebarMenuItem key={item.title}>
+    <SidebarMenuItem key={`${item.url}-${item.title}`}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton
@@ -121,9 +126,9 @@ const NavItemCollapsed = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-50 space-y-1" side="right" align="start">
           {item.subItems?.map((subItem) => (
-            <DropdownMenuItem key={subItem.title} asChild>
+            <DropdownMenuItem key={subItem.url} asChild>
               <SidebarMenuSubButton
-                key={subItem.title}
+                key={subItem.url}
                 asChild
                 className="focus-visible:ring-0"
                 aria-disabled={subItem.comingSoon}
@@ -250,7 +255,7 @@ export function NavMain({ items }: NavMainProps) {
                       // If no subItems, just render the button as a link
                       if (!item.subItems) {
                         return (
-                          <SidebarMenuItem key={item.title}>
+                          <SidebarMenuItem key={`${item.url}-${item.title}`}>
                             <SidebarMenuButton
                               asChild
                               aria-disabled={item.comingSoon}
@@ -266,12 +271,18 @@ export function NavMain({ items }: NavMainProps) {
                         );
                       }
                       // Otherwise, render the dropdown as before
-                      return <NavItemCollapsed key={item.title} item={item} isActive={isItemActive} />;
+                      return (
+                        <NavItemCollapsed
+                          key={`${item.url}-${item.title}`}
+                          item={item}
+                          isActive={isItemActive}
+                        />
+                      );
                     }
                     // Expanded view
                     return (
                       <NavItemExpanded
-                        key={item.title}
+                        key={`${item.url}-${item.title}`}
                         item={item}
                         isActive={isItemActive}
                         isSubmenuOpen={isSubmenuOpen}

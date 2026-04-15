@@ -97,6 +97,36 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 2,
+    label: "Import",
+    items: [
+      {
+        title: "Purchase Orders",
+        url: "/purchase-orders",
+        icon: ReceiptText,
+      },
+      {
+        title: "Planning",
+        url: "/shipment-planning",
+        icon: Kanban,
+        subItems: [
+          { title: "Demand", url: "/sales-shipments/demand" },
+          { title: "Container Planning", url: "/container-planning" },
+          { title: "Shipment Planning", url: "/shipment-planning" },
+        ],
+      },
+      {
+        title: "Inbound",
+        url: "/inbound-shipments",
+        icon: Truck,
+        subItems: [
+          { title: "Inbound Shipments", url: "/inbound-shipments" },
+          { title: "Inbound Containers", url: "/inbound-containers" },
+        ],
+      },
+    ],
+  },
+  {
+    id: 3,
     label: "Management",
     items: [
       {
@@ -113,11 +143,6 @@ export const sidebarItems: NavGroup[] = [
         url: "/inventory",
         icon: CirclePile,
         subItems: [{ title: "Check Inventory", url: "/inventory", icon: ListChecks }],
-      },
-      {
-        title: "Purchase Orders",
-        url: "/purchase-orders",
-        icon: ReceiptText,
       },
       {
         title: "Profiles",
@@ -138,23 +163,7 @@ export const sidebarItems: NavGroup[] = [
     ],
   },
   {
-    id: 3,
-    label: "Logistics",
-    items: [
-      {
-        title: "Shipments",
-        url: "/purchase-shipments",
-        icon: Ship,
-      },
-      {
-        title: "Demand",
-        url: "/sales-shipments/demand",
-        icon: ChartBar,
-      },
-    ],
-  },
-  {
-    id: 4,
+    id: 9,
     label: "Warehouse",
     items: [
       {

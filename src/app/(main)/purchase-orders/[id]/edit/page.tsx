@@ -258,7 +258,7 @@ export default async function EditPurchaseOrderPage({
             </div>
             <div className="space-y-1">
               <label htmlFor="quantity_cases" className="font-medium">
-                Quantity (pieces)
+                Pieces
               </label>
               <input
                 id="quantity_cases"

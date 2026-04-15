@@ -47,6 +47,7 @@ export async function GET() {
       .from("containers_v2")
       .select("id, temp_code, status, created_at")
       .is("shipment_id", null)
+      .neq("status", "Canceled")
       .order("created_at", { ascending: true });
 
     if (error) {

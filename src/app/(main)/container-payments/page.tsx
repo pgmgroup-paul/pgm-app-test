@@ -1398,7 +1398,7 @@ export default function ContainerPaymentsPage() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {allocations.map((a, idx) => {
+                                  {allocations.map((a: any, idx) => {
                                     const c = a.containers_v2;
                                     const label =
                                       (c &&

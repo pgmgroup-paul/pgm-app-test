@@ -705,8 +705,6 @@ export default async function ShipmentContainerPage({
                       Add to container
                     </button>
                   </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

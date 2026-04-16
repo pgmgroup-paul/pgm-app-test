@@ -706,7 +706,6 @@ export default async function ShipmentContainerPage({
                     </button>
                   </div>
         </div>
-      </div>
     </div>
   );
 }

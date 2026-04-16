@@ -5,7 +5,7 @@ import {
   createPurchaseOrder,
   addPurchaseOrderLine as addPurchaseOrderLineAction,
   deletePurchaseOrderLine,
-  updatePurchaseOrderLineQuantity,
+  updatePurchaseOrderLineQuantity as updatePurchaseOrderLineQuantityAction,
   updatePurchaseOrder,
   closePurchaseOrder,
 } from "../po-actions";
@@ -13,6 +13,11 @@ import {
 async function addPurchaseOrderLine(formData: FormData) {
   "use server";
   await addPurchaseOrderLineAction(formData);
+}
+
+async function updatePurchaseOrderLineQuantity(formData: FormData) {
+  "use server";
+  await updatePurchaseOrderLineQuantityAction(formData);
 }
 import { AddProductSearch } from "./AddProductSearch";
 import EditableQuantityInput from "./EditableQuantityInput";

@@ -4,7 +4,7 @@ import { serverSupabase } from "@/lib/serverSupabase";
 import {
   createPurchaseOrder,
   addPurchaseOrderLine as addPurchaseOrderLineAction,
-  deletePurchaseOrderLine,
+  deletePurchaseOrderLine as deletePurchaseOrderLineAction,
   updatePurchaseOrderLineQuantity as updatePurchaseOrderLineQuantityAction,
   updatePurchaseOrder,
   closePurchaseOrder,
@@ -18,6 +18,11 @@ async function addPurchaseOrderLine(formData: FormData) {
 async function updatePurchaseOrderLineQuantity(formData: FormData) {
   "use server";
   await updatePurchaseOrderLineQuantityAction(formData);
+}
+
+async function deletePurchaseOrderLine(formData: FormData) {
+  "use server";
+  await deletePurchaseOrderLineAction(formData);
 }
 import { AddProductSearch } from "./AddProductSearch";
 import EditableQuantityInput from "./EditableQuantityInput";

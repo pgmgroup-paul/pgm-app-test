@@ -634,11 +634,12 @@ export default async function ShipmentContainerPage({
       </div>
 
       {/* Container limits (metric) */}
-      <div className=                  <input type="hidden" name="shipment_id" value={shipment.id as string} />
-                  <input type="hidden" name="shipment_container_id" value={container.id as string} />
-                  <input type="hidden" name="po_number" value={currentPoNumber} />
+      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
+        <input type="hidden" name="shipment_id" value={shipment.id as string} />
+        <input type="hidden" name="shipment_container_id" value={container.id as string} />
+        <input type="hidden" name="po_number" value={currentPoNumber} />
 
-                  <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
                     <table className="w-full text-left text-[11px]">
                       <thead className="border-b bg-muted text-[11px] text-muted-foreground">
                         <tr>

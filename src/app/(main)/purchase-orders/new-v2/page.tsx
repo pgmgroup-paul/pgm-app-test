@@ -3,12 +3,17 @@ import { serverSupabase } from "@/lib/serverSupabase";
 
 import {
   createPurchaseOrder,
-  addPurchaseOrderLine,
+  addPurchaseOrderLine as addPurchaseOrderLineAction,
   deletePurchaseOrderLine,
   updatePurchaseOrderLineQuantity,
   updatePurchaseOrder,
   closePurchaseOrder,
 } from "../po-actions";
+
+async function addPurchaseOrderLine(formData: FormData) {
+  "use server";
+  await addPurchaseOrderLineAction(formData);
+}
 import { AddProductSearch } from "./AddProductSearch";
 import EditableQuantityInput from "./EditableQuantityInput";
 

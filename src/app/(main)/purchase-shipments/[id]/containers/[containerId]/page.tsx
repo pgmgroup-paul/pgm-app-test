@@ -637,7 +637,7 @@ export default async function ShipmentContainerPage({
       <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
         <input type="hidden" name="shipment_id" value={shipment.id as string} />
         <input type="hidden" name="shipment_container_id" value={container.id as string} />
-        <input type="hidden" name="po_number" value={currentPoNumber} />
+        <input type="hidden" name="po_number" value={currentPoNumber ?? ""} />
 
         <div className="overflow-x-auto">
                     <table className="w-full text-left text-[11px]">

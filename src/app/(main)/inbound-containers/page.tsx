@@ -21,21 +21,47 @@ interface InboundContainerRow {
   }[];
 }
 
-const STATUS_OPTIONS = ["all", "Draft", "In Transit", "Arrived", "Delivered", "Canceled"];
-
 export default function InboundContainersPage() {
   const router = useRouter();
   const [rows, setRows] = useState<InboundContainerRow[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [search, setSearch] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [etaSortOrder, setEtaSortOrder] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  useEffect(() => {
+    const fetchStatusOptions = async () => {
+      try {
+        const res = await fetch("/api/inbound-containers/list");
+        const data = await res.json();
+        if (!res.ok) {
+          console.error("Error loading inbound container statuses", data);
+          return;
+        }
+        const containers: InboundContainerRow[] = data.containers || [];
+        const unique = Array.from(
+          new Set(
+            containers
+              .map((c) => (c.status || "").trim())
+              .filter((s) => s.length > 0),
+          ),
+        );
+        setStatusOptions(unique);
+      } catch (err) {
+        console.error("Unexpected error loading inbound container statuses", err);
+      }
+    };
+
+    fetchStatusOptions();
+  }, []);
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -88,9 +114,10 @@ export default function InboundContainersPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{ padding: "4px 6px", fontSize: 12 }}
           >
-            {STATUS_OPTIONS.map((s) => (
+            <option value="all">All</option>
+            {statusOptions.map((s) => (
               <option key={s} value={s}>
-                {s === "all" ? "All" : s}
+                {s}
               </option>
             ))}
           </select>
@@ -129,8 +156,13 @@ export default function InboundContainersPage() {
               <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #e5e7eb" }}>
                 Status
               </th>
-              <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #e5e7eb" }}>
-                ETA
+              <th
+                style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #e5e7eb", cursor: "pointer" }}
+                onClick={() =>
+                  setEtaSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                }
+              >
+                ETA {etaSortOrder === "asc" ? "↑" : "↓"}
               </th>
               <th style={{ textAlign: "right", padding: "6px 8px", borderBottom: "1px solid #e5e7eb" }}>
                 Cartons
@@ -153,7 +185,23 @@ export default function InboundContainersPage() {
               </tr>
             )}
             {!loading &&
-              rows.map((c) => {
+              [...rows]
+                .sort((a, b) => {
+                  // Handle null or invalid ETA values: send them to the bottom
+                  if (!a.eta && !b.eta) return 0;
+                  if (!a.eta) return 1;
+                  if (!b.eta) return -1;
+
+                  const dateA = new Date(a.eta as string).getTime();
+                  const dateB = new Date(b.eta as string).getTime();
+
+                  if (Number.isNaN(dateA) && Number.isNaN(dateB)) return 0;
+                  if (Number.isNaN(dateA)) return 1;
+                  if (Number.isNaN(dateB)) return -1;
+
+                  return etaSortOrder === "asc" ? dateA - dateB : dateB - dateA;
+                })
+                .map((c) => {
                 const items =
                   typeof c.items_detail === "string"
                     ? JSON.parse(c.items_detail)

@@ -457,7 +457,7 @@ export default function ContainerPaymentsPage() {
       const { data: containers, error } = await supabase
         .from("containers_v2")
         .select("id, container_number, temp_code, status")
-        .eq("status", "Unloaded");
+        .ilike("status", "unloaded");
 
       if (error) {
         console.error("Error loading delivery containers", error);

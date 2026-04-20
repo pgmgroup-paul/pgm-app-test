@@ -123,6 +123,11 @@ export const sidebarItems: NavGroup[] = [
           { title: "Inbound Containers", url: "/inbound-containers" },
         ],
       },
+      {
+        title: "Container Payments",
+        url: "/container-payments",
+        icon: DollarSign,
+      },
     ],
   },
   {

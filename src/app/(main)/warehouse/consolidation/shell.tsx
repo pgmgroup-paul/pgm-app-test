@@ -142,7 +142,7 @@ export function ConsolidationShell() {
               <p className="mb-1 font-medium">Locations for this product</p>
 
               {/* Desktop table */}
-              <div className="hidden max-h-64 overflow-auto md:block">
+              <div className="hidden max-h-64 overflow-auto overflow-x-auto md:block">
                 <table className="w-full text-left text-[11px]">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
@@ -218,11 +218,20 @@ export function ConsolidationShell() {
           </form>
 
           {candidatesState.ok === true && candidatesState.rows && candidatesState.rows.length > 0 && (
-            <div className="w-full max-w-none rounded-md border px-3 py-2 text-xs">
-              <p className="mb-1 font-medium">Consolidation candidates</p>
+            <>
+              {/* Summary: total pallet spaces that could be freed */}
+              <div className="w-full max-w-none rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200">
+                <span className="text-[11px]">Potential pallet spaces to free: </span>
+                <span className="font-semibold">
+                  {candidatesState.rows.reduce((sum, row) => sum + (row.spacesSaved || 0), 0)}
+                </span>
+              </div>
 
-              {/* Desktop table */}
-              <div className="hidden max-h-64 overflow-auto md:block">
+              <div className="w-full max-w-none rounded-md border px-3 py-2 text-xs">
+                <p className="mb-1 font-medium">Consolidation candidates</p>
+
+                {/* Desktop table */}
+                <div className="hidden max-h-64 overflow-auto md:block">
                 <table className="w-full text-left text-[11px]">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
@@ -395,6 +404,7 @@ export function ConsolidationShell() {
                 })}
               </div>
             </div>
+          </>
           )}
 
           {candidatesState.ok === true && (!candidatesState.rows || candidatesState.rows.length === 0) && (

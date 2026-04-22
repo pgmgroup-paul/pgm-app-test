@@ -16,6 +16,7 @@ export interface MovementRow {
   source_ref: string | null;
   order_number: string | null;
   shipment_label?: string | null;
+  note?: string | null;
 }
 
 export interface MovementsState {
@@ -66,6 +67,7 @@ export async function loadMovementsBySku(_prev: MovementsState, formData: FormDa
        source_ref,
        order_number,
        shipment_id,
+       note,
        from_location:from_location_id ( code, warehouses ( name ) ),
        to_location:to_location_id ( code, warehouses ( name ) )`,
     )
@@ -135,6 +137,7 @@ export async function loadMovementsBySku(_prev: MovementsState, formData: FormDa
       source_ref: (m.source_ref as string) || null,
       order_number: orderNumber,
       shipment_label: effectiveOrderNumber,
+      note: (m.note as string) || null,
     } satisfies MovementRow;
   });
 

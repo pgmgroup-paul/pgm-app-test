@@ -107,6 +107,7 @@ export function MovementsShell() {
                   <th className="py-1 pr-2">Movement</th>
                   <th className="py-1 pr-2 text-right">Qty (cases)</th>
                   <th className="py-1 pr-2">Location</th>
+                  <th className="py-1 pr-2">Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -154,6 +155,9 @@ export function MovementsShell() {
                       <td className="py-1 pr-2 text-[11px]">{movementDesc}</td>
                       <td className="py-1 pr-2 text-right text-[11px]">{row.quantity_cases}</td>
                       <td className="py-1 pr-2 text-[11px]">{locationDesc}</td>
+                      <td className="py-1 pr-2 text-[10px] text-muted-foreground align-top max-w-xs break-words">
+                        {row.note && row.note.trim().length > 0 ? row.note : "—"}
+                      </td>
                     </tr>
                   );
                 })}
@@ -246,6 +250,13 @@ export function MovementsShell() {
 
                         {/* Movement description */}
                         <div className="mt-1 text-[11px] text-muted-foreground">{movementDesc}</div>
+
+                        {/* Notes (if present) */}
+                        {row.note && row.note.trim().length > 0 && (
+                          <div className="mt-1 text-[11px] text-muted-foreground break-words">
+                            <span className="font-medium">Note:</span> {row.note}
+                          </div>
+                        )}
 
                         {/* Location + Source */}
                         <div className="mt-1 flex flex-col gap-0.5 text-[10px] text-muted-foreground">

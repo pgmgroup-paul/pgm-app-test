@@ -205,6 +205,7 @@ export const sidebarItems: NavGroup[] = [
           { title: "Movement history", url: "/warehouse/movements", icon: ReceiptText },
           { title: "Enter case and pallet dimensions", url: "/warehouse/dimensions", icon: Images },
           { title: "Check pallet configuration", url: "/warehouse/check-pallet", icon: Kanban },
+          { title: "Consolidation", url: "/warehouse/consolidation", icon: CirclePile },
           {
             title: "Transfer overflow to dropship area",
             url: "/warehouse/dropship-transfer",

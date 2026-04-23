@@ -3,9 +3,15 @@
 import { useActionState, useState } from "react";
 
 import { loadMovementsBySku, type MovementRow, type MovementsState } from "./movements-load";
+import { loadRecentMovements, type RecentMovementsState } from "./load-recent";
 
 export function MovementsShell() {
+  const [activeTab, setActiveTab] = useState<"sku" | "recent">("sku");
+
   const [state, action] = useActionState<MovementsState, FormData>(loadMovementsBySku, {
+    ok: null,
+  });
+  const [recentState, recentAction] = useActionState<RecentMovementsState, FormData>(loadRecentMovements, {
     ok: null,
   });
   const [showFilters, setShowFilters] = useState(false);
@@ -34,18 +40,43 @@ export function MovementsShell() {
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        className="inline-flex items-center rounded-md border px-3 py-1 font-medium text-xs md:hidden"
-        onClick={() => setShowFilters((prev) => !prev)}
-      >
-        Filters
-      </button>
+      {/* Tabs */}
+      <div className="inline-flex rounded-md border bg-muted p-0.5 text-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("sku")}
+          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+            activeTab === "sku" ? "bg-background text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          Search by SKU
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("recent")}
+          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+            activeTab === "recent" ? "bg-background text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          Recent activity
+        </button>
+      </div>
 
-      <form
-        action={action}
-        className={`space-y-3 rounded-md border px-3 py-3 text-sm ${showFilters ? "" : "hidden md:block"}`}
-      >
+      {/* Search by SKU tab */}
+      {activeTab === "sku" && (
+        <>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-md border px-3 py-1 font-medium text-xs md:hidden"
+            onClick={() => setShowFilters((prev) => !prev)}
+          >
+            Filters
+          </button>
+
+          <form
+            action={action}
+            className={`space-y-3 rounded-md border px-3 py-3 text-sm ${showFilters ? "" : "hidden md:block"}`}
+          >
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU
@@ -94,7 +125,7 @@ export function MovementsShell() {
         )}
       </form>
 
-      {state.ok === true && state.rows && state.rows.length > 0 && (
+      {activeTab === "sku" && state.ok === true && state.rows && state.rows.length > 0 && (
         <div className="rounded-md border px-3 py-2 text-xs">
           <p className="mb-1 font-medium">Movement history</p>
           <div className="max-h-80 overflow-auto">
@@ -289,8 +320,105 @@ export function MovementsShell() {
         </div>
       )}
 
-      {state.ok === true && (!state.rows || state.rows.length === 0) && (
+      {activeTab === "sku" && state.ok === true && (!state.rows || state.rows.length === 0) && (
         <p className="text-muted-foreground text-xs">No movements found for this product yet.</p>
+      )}
+      </>
+      )}
+
+      {/* Recent Activity tab */}
+      {activeTab === "recent" && (
+        <div className="space-y-3">
+          <form action={recentAction} className="space-y-2 text-xs">
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs hover:bg-primary/90"
+            >
+              Load recent activity
+            </button>
+            {recentState.ok === false && recentState.error && (
+              <p className="mt-1 text-destructive text-[11px]">{recentState.error}</p>
+            )}
+          </form>
+
+          {recentState.ok === true && recentState.rows && recentState.rows.length > 0 && (
+            <div className="rounded-md border px-3 py-2 text-xs">
+              <p className="mb-1 font-medium">Recent inventory movements</p>
+
+              {/* Desktop table */}
+              <div className="hidden max-h-80 overflow-auto md:block">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="border-b text-[11px] text-muted-foreground">
+                    <tr>
+                      <th className="py-1 pr-2">Date</th>
+                      <th className="py-1 pr-2">SKU</th>
+                      <th className="py-1 pr-2">Product</th>
+                      <th className="py-1 pr-2">Type</th>
+                      <th className="py-1 pr-2">Notes</th>
+                      <th className="py-1 pr-2 text-right">Qty (cases)</th>
+                      <th className="py-1 pr-2">Location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentState.rows.map((row) => (
+                      <tr key={row.id} className="border-b last:border-none">
+                        <td className="py-1 pr-2 text-[10px] text-muted-foreground">
+                          {new Date(row.created_at).toLocaleString()}
+                        </td>
+                        <td className="py-1 pr-2 font-mono text-[11px]">{row.sku ?? "-"}</td>
+                        <td className="py-1 pr-2 text-[11px]">{row.product_name ?? ""}</td>
+                        <td className="py-1 pr-2 text-[11px]">{row.movement_type}</td>
+                        <td className="py-1 pr-2 text-[10px] text-muted-foreground max-w-xs break-words">
+                          {row.note && row.note.trim().length > 0 ? row.note : "—"}
+                        </td>
+                        <td className="py-1 pr-2 text-right text-[11px]">{row.quantity_cases}</td>
+                        <td className="py-1 pr-2 text-[11px]">{row.location_code ?? ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="space-y-2 py-2 md:hidden">
+                {recentState.rows.map((row) => (
+                  <div key={row.id} className="w-full rounded-md border bg-white px-3 py-2 text-[11px] shadow-sm">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>{new Date(row.created_at).toLocaleString()}</span>
+                      <span className="font-mono">{row.sku ?? "-"}</span>
+                    </div>
+                    {row.product_name && (
+                      <div className="mt-1 text-[11px] text-muted-foreground">{row.product_name}</div>
+                    )}
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className="font-semibold text-foreground">{row.movement_type}</span>
+                    </div>
+                    {row.note && row.note.trim().length > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground break-words">
+                        <span className="font-medium">Note:</span> {row.note}
+                      </div>
+                    )}
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-muted-foreground">Qty (cases)</span>
+                      <span className="font-semibold text-foreground">{row.quantity_cases}</span>
+                    </div>
+                    {row.location_code && (
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-muted-foreground">Location</span>
+                        <span className="font-mono text-foreground">{row.location_code}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recentState.ok === true && (!recentState.rows || recentState.rows.length === 0) && (
+            <p className="text-muted-foreground text-xs">No recent inventory movements found.</p>
+          )}
+        </div>
       )}
     </div>
   );

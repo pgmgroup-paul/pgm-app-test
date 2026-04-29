@@ -16,6 +16,9 @@ export function MovementsShell() {
   });
   const [showFilters, setShowFilters] = useState(false);
 
+  // Recent Activity filters (desktop-only UI for now)
+  const [recentSearch, setRecentSearch] = useState<string>("");
+
   const mobileGroups: { key: string; label: string; rows: MovementRow[] }[] =
     state.ok === true && state.rows
       ? state.rows.reduce<Array<{ key: string; label: string; rows: MovementRow[] }>>((groups, row) => {
@@ -329,25 +332,87 @@ export function MovementsShell() {
       {/* Recent Activity tab */}
       {activeTab === "recent" && (
         <div className="space-y-3">
-          <form action={recentAction} className="space-y-2 text-xs">
-            <button
-              type="submit"
-              className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs hover:bg-primary/90"
-            >
-              Load recent activity
-            </button>
-            {recentState.ok === false && recentState.error && (
-              <p className="mt-1 text-destructive text-[11px]">{recentState.error}</p>
-            )}
+          {/* Filters form (desktop) */}
+          <form
+            key={JSON.stringify(recentState.filters || {})}
+            action={recentAction}
+            className="space-y-2 text-xs"
+          >
+            {/* Desktop filter bar */}
+            <div className="hidden items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs md:flex">
+                {/* Date range */}
+                <div className="flex items-center gap-1">
+                  <label htmlFor="recent-date" className="whitespace-nowrap text-[11px] text-muted-foreground">
+                    Date
+                  </label>
+                  <select
+                    id="recent-date"
+                    name="datePreset"
+                    className="h-7 rounded-md border bg-background px-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    defaultValue={recentState.filters?.datePreset ?? "last7"}
+                    onChange={(e) => {
+                      e.currentTarget.form?.requestSubmit();
+                    }}
+                  >
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="last7">Last 7 days</option>
+                    <option value="last30">Last 30 days</option>
+                  </select>
+                </div>
+
+                {/* Movement type */}
+                <div className="flex items-center gap-1">
+                  <label htmlFor="recent-type" className="whitespace-nowrap text-[11px] text-muted-foreground">
+                    Type
+                  </label>
+                  <select
+                    id="recent-type"
+                    name="movementType"
+                    className="h-7 rounded-md border bg-background px-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    defaultValue={recentState.filters?.movementType ?? "all"}
+                    onChange={(e) => {
+                      e.currentTarget.form?.requestSubmit();
+                    }}
+                  >
+                    <option value="all">All</option>
+                    <option value="add">add</option>
+                    <option value="deduct">deduct</option>
+                    <option value="transfer">transfer</option>
+                    <option value="consolidate">consolidate</option>
+                    <option value="undo_add">undo_add</option>
+                    <option value="undo_deduct">undo_deduct</option>
+                  </select>
+                </div>
+
+                {/* Search input */}
+                <div className="ml-auto flex items-center gap-1">
+                  <input
+                    type="text"
+                    name="search"
+                    placeholder="Search Order / Container / Notes"
+                    className="h-7 w-56 rounded-md border bg-background px-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    defaultValue={recentState.filters?.search || ""}
+                    onBlur={(e) => {
+                      e.currentTarget.form?.requestSubmit();
+                    }}
+                  />
+                </div>
+              </div>
           </form>
 
           {recentState.ok === true && recentState.rows && recentState.rows.length > 0 && (
-            <div className="rounded-md border px-3 py-2 text-xs">
-              <p className="mb-1 font-medium">Recent inventory movements</p>
+            <>
+              {/* Debug: show current row count */}
+              <div className="text-[10px] text-muted-foreground">
+                Rows: {recentState.rows?.length ?? 0}
+              </div>
 
-              {/* Desktop table */}
-              <div className="hidden max-h-80 overflow-auto md:block">
-                <table className="w-full text-left text-[11px]">
+              {/* Desktop + mobile results */}
+              <div key={JSON.stringify(recentState.rows?.[0]?.id || "")}>
+                {/* Desktop table */}
+                <div className="hidden w-full overflow-x-auto md:block">
+                  <table className="w-full text-left text-[11px]">
                   <thead className="border-b text-[11px] text-muted-foreground">
                     <tr>
                       <th className="py-1 pr-2">Date</th>
@@ -355,6 +420,9 @@ export function MovementsShell() {
                       <th className="py-1 pr-2">Product</th>
                       <th className="py-1 pr-2">Type</th>
                       <th className="py-1 pr-2">Notes</th>
+                      <th className="py-1 pr-2">Reason</th>
+                      <th className="py-1 pr-2">Order Number</th>
+                      <th className="py-1 pr-2">Container</th>
                       <th className="py-1 pr-2 text-right">Qty (cases)</th>
                       <th className="py-1 pr-2">Location</th>
                     </tr>
@@ -371,6 +439,15 @@ export function MovementsShell() {
                         <td className="py-1 pr-2 text-[10px] text-muted-foreground max-w-xs break-words">
                           {row.note && row.note.trim().length > 0 ? row.note : "—"}
                         </td>
+                        <td className="py-1 pr-2 text-[10px] text-muted-foreground max-w-[140px] break-words">
+                          {row.reason || ""}
+                        </td>
+                        <td className="py-1 pr-2 text-[10px] text-muted-foreground max-w-[140px] break-words">
+                          {row.order_number || ""}
+                        </td>
+                        <td className="py-1 pr-2 text-[10px] text-muted-foreground max-w-[140px] break-words">
+                          {row.source_ref || ""}
+                        </td>
                         <td className="py-1 pr-2 text-right text-[11px]">{row.quantity_cases}</td>
                         <td className="py-1 pr-2 text-[11px]">{row.location_code ?? ""}</td>
                       </tr>
@@ -380,7 +457,7 @@ export function MovementsShell() {
               </div>
 
               {/* Mobile cards */}
-              <div className="space-y-2 py-2 md:hidden">
+              <div className="space-y-2 py-2 text-xs md:hidden">
                 {recentState.rows.map((row) => (
                   <div key={row.id} className="w-full rounded-md border bg-white px-3 py-2 text-[11px] shadow-sm">
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -399,6 +476,21 @@ export function MovementsShell() {
                         <span className="font-medium">Note:</span> {row.note}
                       </div>
                     )}
+                    {row.reason && row.reason.trim().length > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground break-words">
+                        <span className="font-medium">Reason:</span> {row.reason}
+                      </div>
+                    )}
+                    {row.order_number && row.order_number.trim().length > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground break-words">
+                        <span className="font-medium">Order Number:</span> {row.order_number}
+                      </div>
+                    )}
+                    {row.source_ref && row.source_ref.trim().length > 0 && (
+                      <div className="mt-1 text-[11px] text-muted-foreground break-words">
+                        <span className="font-medium">Container:</span> {row.source_ref}
+                      </div>
+                    )}
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-muted-foreground">Qty (cases)</span>
                       <span className="font-semibold text-foreground">{row.quantity_cases}</span>
@@ -413,6 +505,7 @@ export function MovementsShell() {
                 ))}
               </div>
             </div>
+            </>
           )}
 
           {recentState.ok === true && (!recentState.rows || recentState.rows.length === 0) && (

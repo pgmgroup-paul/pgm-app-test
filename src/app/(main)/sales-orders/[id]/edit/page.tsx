@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { cancelSalesOrder } from "../cancel-order";
+import { AddLineForm } from "./AddLineForm";
 
 export const dynamic = "force-dynamic";
 
@@ -182,6 +183,7 @@ export default async function EditSalesOrderPage({
                   <th className="px-2 py-1">Variant</th>
                   <th className="px-2 py-1">Product</th>
                   <th className="px-2 py-1 text-right">Quantity (units)</th>
+                  <th className="px-2 py-1 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -190,7 +192,80 @@ export default async function EditSalesOrderPage({
                     <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{line.sku}</td>
                     <td className="px-2 py-1 text-[11px]">{line.sku_var}</td>
                     <td className="px-2 py-1 text-[11px]">{line.description}</td>
-                    <td className="px-2 py-1 text-right text-[11px]">{line.quantity_units}</td>
+                    <td className="px-2 py-1 text-right text-[11px]">
+                      <form
+                        action={async (formData: FormData) => {
+                          "use server";
+
+                          const lineId = (formData.get("line_id") || "").toString().trim();
+                          const qtyRaw = (formData.get("quantity_units") || "").toString().trim();
+
+                          const quantity = Number(qtyRaw);
+                          if (!lineId || !Number.isFinite(quantity) || quantity <= 0) {
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-update-line`);
+                          }
+
+                          const { error: updateError } = await serverSupabase
+                            .from("sales_order_lines")
+                            .update({ quantity_units: quantity })
+                            .eq("id", lineId);
+
+                          if (updateError) {
+                            console.error("Error updating sales order line quantity", updateError);
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-update-line`);
+                          }
+
+                          redirect(`/sales-orders/${id}/edit`);
+                        }}
+                      >
+                        <input type="hidden" name="line_id" value={line.id as string} />
+                        <input
+                          type="number"
+                          name="quantity_units"
+                          min="1"
+                          defaultValue={line.quantity_units}
+                          className="w-20 rounded-md border border-input bg-background px-2 py-0.5 text-right text-[11px] shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                        <button
+                          type="submit"
+                          className="ml-1 inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
+                        >
+                          Update
+                        </button>
+                      </form>
+                    </td>
+                    <td className="px-2 py-1 text-right text-[11px]">
+                      <form
+                        action={async (formData: FormData) => {
+                          "use server";
+
+                          const lineId = (formData.get("line_id") || "").toString().trim();
+                          if (!lineId) {
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-delete-line`);
+                          }
+
+                          const { error: deleteError } = await serverSupabase
+                            .from("sales_order_lines")
+                            .delete()
+                            .eq("id", lineId);
+
+                          if (deleteError) {
+                            console.error("Error deleting sales order line", deleteError);
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-delete-line`);
+                          }
+
+                          redirect(`/sales-orders/${id}/edit`);
+                        }}
+                      >
+                        <input type="hidden" name="line_id" value={line.id as string} />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -199,124 +274,68 @@ export default async function EditSalesOrderPage({
         )}
       </div>
 
-      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="font-medium text-[11px]">Add line</div>
-        <form
-          action={async (formData: FormData) => {
-            "use server";
+      <AddLineForm
+        salesOrderId={so.id as string}
+        action={async (formData: FormData) => {
+          "use server";
 
-            const profile = await getCurrentUserProfile();
+          const profile = await getCurrentUserProfile();
 
-            if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
-              redirect("/unauthorized");
-            }
+          if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+            redirect("/unauthorized");
+          }
 
-            const soId = (formData.get("sales_order_id") || "").toString().trim();
-            const sku = (formData.get("sku") || "").toString().trim();
-            const skuVar = (formData.get("sku_var") || "").toString().trim();
-            const qtyRaw = (formData.get("quantity_units") || "").toString().trim();
+          const soId = (formData.get("sales_order_id") || "").toString().trim();
+          const sku = (formData.get("sku") || "").toString().trim();
+          const skuVar = (formData.get("sku_var") || "").toString().trim();
+          const qtyRaw = (formData.get("quantity_units") || "").toString().trim();
 
-            if (!soId || !sku || !qtyRaw) {
-              redirect(`/sales-orders/${id}/edit?error=missing-line-fields`);
-            }
+          if (!soId || !sku || !qtyRaw) {
+            redirect(`/sales-orders/${id}/edit?error=missing-line-fields`);
+          }
 
-            const quantity = Number(qtyRaw);
-            if (!Number.isFinite(quantity) || quantity <= 0) {
-              redirect(`/sales-orders/${id}/edit?error=bad-qty`);
-            }
+          const quantity = Number(qtyRaw);
+          if (!Number.isFinite(quantity) || quantity <= 0) {
+            redirect(`/sales-orders/${id}/edit?error=bad-qty`);
+          }
 
-            // Resolve product by SKU / variant, similar to PO lines
-            let productQuery = serverSupabase
-              .from("products")
-              .select("id, sku, sku_var, product_name")
-              .ilike("sku", sku);
+          // Resolve product by SKU / variant, similar to PO lines
+          let productQuery = serverSupabase
+            .from("products")
+            .select("id, sku, sku_var, product_name")
+            .ilike("sku", sku);
 
-            if (skuVar) {
-              productQuery = productQuery.ilike("sku_var", skuVar);
-            } else {
-              productQuery = productQuery.is("sku_var", null);
-            }
+          if (skuVar) {
+            productQuery = productQuery.ilike("sku_var", skuVar);
+          } else {
+            productQuery = productQuery.is("sku_var", null);
+          }
 
-            const { data: product, error: prodError } = await productQuery.maybeSingle();
+          const { data: product, error: prodError } = await productQuery.maybeSingle();
 
-            if (prodError || !product) {
-              console.error("Error looking up product for SO line", prodError);
-              redirect(`/sales-orders/${id}/edit?error=product-not-in-catalog`);
-            }
+          if (prodError || !product) {
+            console.error("Error looking up product for SO line", prodError);
+            redirect(`/sales-orders/${id}/edit?error=product-not-in-catalog`);
+          }
 
-            const { error: insertError } = await serverSupabase.from("sales_order_lines").insert({
-              sales_order_id: soId,
-              product_id: product.id as string,
-              sku: product.sku as string,
-              sku_var: (product.sku_var as string) || null,
-              description: (product.product_name as string) || null,
-              quantity_units: quantity,
-            });
+          const { error: insertError } = await serverSupabase.from("sales_order_lines").insert({
+            sales_order_id: soId,
+            product_id: product.id as string,
+            sku: product.sku as string,
+            sku_var: (product.sku_var as string) || null,
+            description: (product.product_name as string) || null,
+            quantity_units: quantity,
+          });
 
-            if (insertError) {
-              console.error("Error inserting SO line", insertError);
-              redirect(`/sales-orders/${id}/edit?error=failed-to-add-line`);
-            }
+          if (insertError) {
+            console.error("Error inserting SO line", insertError);
+            redirect(`/sales-orders/${id}/edit?error=failed-to-add-line`);
+          }
 
-            redirect(`/sales-orders/${id}/edit`);
-          }}
-          className="grid grid-cols-1 gap-3 sm:grid-cols-4"
-        >
-          <input type="hidden" name="sales_order_id" value={so.id as string} />
-          <div className="space-y-1">
-            <label htmlFor="sku" className="font-medium text-[11px]">
-              SKU
-            </label>
-            <input
-              id="sku"
-              name="sku"
-              type="text"
-              className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="sku_var" className="font-medium text-[11px]">
-              Variant
-            </label>
-            <input
-              id="sku_var"
-              name="sku_var"
-              type="text"
-              className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="quantity_units" className="font-medium text-[11px]">
-              Quantity (units)
-            </label>
-            <input
-              id="quantity_units"
-              name="quantity_units"
-              type="number"
-              min="1"
-              step="1"
-              className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center rounded-md border px-3 py-1.5 font-medium text-[11px] hover:bg-muted"
-            >
-              Add line
-            </button>
-          </div>
-        </form>
-
-        {error && (
-          <p className="pt-2 text-[11px] text-destructive">
-            {error === "missing-line-fields" && "SKU and quantity are required."}
-            {error === "bad-qty" && "Quantity must be a positive number."}
-            {error === "product-not-in-catalog" && "Product not found in catalog."}
-            {error === "failed-to-add-line" && "Failed to add line."}
-          </p>
-        )}
-      </div>
+          redirect(`/sales-orders/${id}/edit`);
+        }}
+        error={error}
+      />
     </div>
   );
 }

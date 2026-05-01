@@ -43,7 +43,7 @@ export function AddLineForm({ salesOrderId, action, error }: { salesOrderId: str
 
   return (
     <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-      <div className="font-medium text-[11px]">Add line</div>
+      <div className="font-medium text-[11px]">Add product</div>
 
       <div className="space-y-1">
         <label htmlFor="product_search" className="font-medium text-[11px]">
@@ -152,7 +152,7 @@ export function AddLineForm({ salesOrderId, action, error }: { salesOrderId: str
             className="inline-flex w-full items-center justify-center rounded-md border px-3 py-1.5 font-medium text-[11px] hover:bg-muted disabled:opacity-50"
             disabled={isPending}
           >
-            {isPending ? "Adding..." : "Add line"}
+            {isPending ? "Adding..." : "Add product"}
           </button>
         </div>
       </form>
@@ -165,6 +165,7 @@ export function AddLineForm({ salesOrderId, action, error }: { salesOrderId: str
           {error === "failed-to-add-line" && "Failed to add line."}
           {error === "failed-to-delete-line" && "Failed to remove line."}
           {error === "failed-to-update-line" && "Failed to update quantity."}
+          {error === "failed-to-update-date" && "Failed to update requested ship date."}
         </p>
       )}
     </div>

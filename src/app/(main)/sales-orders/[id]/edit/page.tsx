@@ -4,6 +4,8 @@ import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { cancelSalesOrder } from "../cancel-order";
 import { AddLineForm } from "./AddLineForm";
+import { RequestedShipDateInput } from "./RequestedShipDateInput";
+import { LineQuantityInput } from "./LineQuantityInput";
 
 export const dynamic = "force-dynamic";
 
@@ -148,10 +150,40 @@ export default async function EditSalesOrderPage({
             <div className="text-[11px]">{so.order_date ? new Date(so.order_date).toLocaleDateString() : "-"}</div>
           </div>
           <div className="space-y-1">
-            <div className="text-[11px] text-muted-foreground">Requested ship</div>
-            <div className="text-[11px]">
-              {so.requested_ship_date ? new Date(so.requested_ship_date).toLocaleDateString() : "-"}
-            </div>
+            <div className="text-[11px] text-muted-foreground">Requested ship date</div>
+            <RequestedShipDateInput
+              salesOrderId={so.id as string}
+              defaultValue={so.requested_ship_date || ""}
+              onSubmitAction={async (formData: FormData) => {
+                "use server";
+
+                const salesOrderId = formData.get("sales_order_id")?.toString();
+                const requestedShipDateRaw = formData.get("requested_ship_date")?.toString() || "";
+                const requestedShipDate = requestedShipDateRaw || null;
+
+                console.log("Update requested_ship_date action triggered");
+                console.log("salesOrderId:", salesOrderId);
+                console.log("requestedShipDateRaw:", requestedShipDateRaw);
+
+                if (!salesOrderId) {
+                  redirect(`/sales-orders/${id}/edit?error=failed-to-update-date`);
+                }
+
+                const { error } = await serverSupabase
+                  .from("sales_orders")
+                  .update({ requested_ship_date: requestedShipDate })
+                  .eq("id", salesOrderId);
+
+                console.log("Update result error:", error);
+
+                if (error) {
+                  console.error("Error updating requested ship date", error);
+                  redirect(`/sales-orders/${id}/edit?error=failed-to-update-date`);
+                }
+
+                redirect(`/sales-orders/${id}/edit`);
+              }}
+            />
           </div>
           <div className="space-y-1">
             <div className="text-[11px] text-muted-foreground">Status</div>
@@ -162,114 +194,6 @@ export default async function EditSalesOrderPage({
           <div className="space-y-1 pt-2">
             <div className="text-[11px] text-muted-foreground">Notes</div>
             <div className="whitespace-pre-wrap text-[11px]">{so.notes}</div>
-          </div>
-        )}
-      </div>
-
-      {/* Shipments summary removed: shown on shipment page instead */}
-      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="flex items-center justify-between">
-          <div className="font-medium text-[11px]">Lines</div>
-        </div>
-
-        {lines.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">No lines yet. Add the first product below.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[11px]">
-              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-2 pl-3">SKU</th>
-                  <th className="px-2 py-1">Variant</th>
-                  <th className="px-2 py-1">Product</th>
-                  <th className="px-2 py-1 text-right">Quantity (units)</th>
-                  <th className="px-2 py-1 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line: any) => (
-                  <tr key={line.id} className="border-b last:border-none">
-                    <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{line.sku}</td>
-                    <td className="px-2 py-1 text-[11px]">{line.sku_var}</td>
-                    <td className="px-2 py-1 text-[11px]">{line.description}</td>
-                    <td className="px-2 py-1 text-right text-[11px]">
-                      <form
-                        action={async (formData: FormData) => {
-                          "use server";
-
-                          const lineId = (formData.get("line_id") || "").toString().trim();
-                          const qtyRaw = (formData.get("quantity_units") || "").toString().trim();
-
-                          const quantity = Number(qtyRaw);
-                          if (!lineId || !Number.isFinite(quantity) || quantity <= 0) {
-                            redirect(`/sales-orders/${id}/edit?error=failed-to-update-line`);
-                          }
-
-                          const { error: updateError } = await serverSupabase
-                            .from("sales_order_lines")
-                            .update({ quantity_units: quantity })
-                            .eq("id", lineId);
-
-                          if (updateError) {
-                            console.error("Error updating sales order line quantity", updateError);
-                            redirect(`/sales-orders/${id}/edit?error=failed-to-update-line`);
-                          }
-
-                          redirect(`/sales-orders/${id}/edit`);
-                        }}
-                      >
-                        <input type="hidden" name="line_id" value={line.id as string} />
-                        <input
-                          type="number"
-                          name="quantity_units"
-                          min="1"
-                          defaultValue={line.quantity_units}
-                          className="w-20 rounded-md border border-input bg-background px-2 py-0.5 text-right text-[11px] shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                        <button
-                          type="submit"
-                          className="ml-1 inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
-                        >
-                          Update
-                        </button>
-                      </form>
-                    </td>
-                    <td className="px-2 py-1 text-right text-[11px]">
-                      <form
-                        action={async (formData: FormData) => {
-                          "use server";
-
-                          const lineId = (formData.get("line_id") || "").toString().trim();
-                          if (!lineId) {
-                            redirect(`/sales-orders/${id}/edit?error=failed-to-delete-line`);
-                          }
-
-                          const { error: deleteError } = await serverSupabase
-                            .from("sales_order_lines")
-                            .delete()
-                            .eq("id", lineId);
-
-                          if (deleteError) {
-                            console.error("Error deleting sales order line", deleteError);
-                            redirect(`/sales-orders/${id}/edit?error=failed-to-delete-line`);
-                          }
-
-                          redirect(`/sales-orders/${id}/edit`);
-                        }}
-                      >
-                        <input type="hidden" name="line_id" value={line.id as string} />
-                        <button
-                          type="submit"
-                          className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
-                        >
-                          Remove
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </div>
@@ -336,6 +260,102 @@ export default async function EditSalesOrderPage({
         }}
         error={error}
       />
+
+      {/* Shipments summary removed: shown on shipment page instead */}
+      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
+        <div className="flex items-center justify-between">
+          <div className="font-medium text-[11px]">Products in this order</div>
+        </div>
+
+        {lines.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No lines yet. Add the first product below.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-2 pl-3">SKU</th>
+                  <th className="px-2 py-1">Variant</th>
+                  <th className="px-2 py-1">Product</th>
+                  <th className="px-2 py-1 text-right">Quantity (units)</th>
+                  <th className="px-2 py-1 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line: any) => (
+                  <tr key={line.id} className="border-b last:border-none">
+                    <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{line.sku}</td>
+                    <td className="px-2 py-1 text-[11px]">{line.sku_var}</td>
+                    <td className="px-2 py-1 text-[11px]">{line.description}</td>
+                    <td className="px-2 py-1 text-right text-[11px]">
+                      <LineQuantityInput
+                        lineId={line.id as string}
+                        defaultValue={line.quantity_units}
+                        disabled={hasShippedShipment || (so.status as string) === "cancelled"}
+                        onSubmitAction={async (formData: FormData) => {
+                          "use server";
+
+                          const lineId = formData.get("line_id")?.toString();
+                          const qtyRaw = formData.get("quantity_units")?.toString();
+                          const quantity = Number(qtyRaw);
+
+                          if (!lineId || !Number.isFinite(quantity) || quantity <= 0) {
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-update-line`);
+                          }
+
+                          const { error } = await serverSupabase
+                            .from("sales_order_lines")
+                            .update({ quantity_units: quantity })
+                            .eq("id", lineId);
+
+                          if (error) {
+                            console.error("Error updating quantity", error);
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-update-line`);
+                          }
+
+                          redirect(`/sales-orders/${id}/edit`);
+                        }}
+                      />
+                    </td>
+                    <td className="px-2 py-1 text-right text-[11px]">
+                      <form
+                        action={async (formData: FormData) => {
+                          "use server";
+
+                          const lineId = (formData.get("line_id") || "").toString().trim();
+                          if (!lineId) {
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-delete-line`);
+                          }
+
+                          const { error: deleteError } = await serverSupabase
+                            .from("sales_order_lines")
+                            .delete()
+                            .eq("id", lineId);
+
+                          if (deleteError) {
+                            console.error("Error deleting sales order line", deleteError);
+                            redirect(`/sales-orders/${id}/edit?error=failed-to-delete-line`);
+                          }
+
+                          redirect(`/sales-orders/${id}/edit`);
+                        }}
+                      >
+                        <input type="hidden" name="line_id" value={line.id as string} />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

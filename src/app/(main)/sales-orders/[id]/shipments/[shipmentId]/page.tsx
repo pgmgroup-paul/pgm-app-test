@@ -217,7 +217,12 @@ export default async function SalesOrderShipmentPage({
         </div>
         <div className="flex items-center gap-2">
           {shipmentContents.length > 0 && shipment.status === "planned" && (
-            <form action={sendShipmentToWarehouse.bind(null, salesOrderId, shipment.id as string)}>
+            <form
+              action={async () => {
+                "use server";
+                await sendShipmentToWarehouse(salesOrderId, shipment.id as string);
+              }}
+            >
               <button
                 type="submit"
                 className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"

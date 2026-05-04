@@ -350,7 +350,6 @@ export default async function EditSalesOrderPage({
 
           redirect(`/sales-orders/${id}/edit`);
         }}
-        error={error}
       />
 
       {/* Shipments summary removed: shown on shipment page instead */}

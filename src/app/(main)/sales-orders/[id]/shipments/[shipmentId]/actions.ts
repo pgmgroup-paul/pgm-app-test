@@ -103,7 +103,11 @@ export async function allocateUnitsToShipment(salesOrderId: string, shipmentId: 
   redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=allocated`);
 }
 
-export async function sendShipmentToWarehouse(salesOrderId: string, shipmentId: string) {
+export async function sendShipmentToWarehouse(
+  salesOrderId: string,
+  shipmentId: string,
+  options?: { skipRedirect?: boolean },
+) {
   const profile = await getCurrentUserProfile();
 
   if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
@@ -181,7 +185,9 @@ export async function sendShipmentToWarehouse(salesOrderId: string, shipmentId: 
     redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=packing-error`);
   }
 
-  redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=sent-to-warehouse`);
+  if (!options?.skipRedirect) {
+    redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=sent-to-warehouse`);
+  }
 }
 
 export async function deleteShipmentFromShipmentPage(

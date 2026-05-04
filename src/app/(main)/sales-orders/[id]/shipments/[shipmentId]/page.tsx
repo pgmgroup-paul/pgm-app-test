@@ -182,7 +182,7 @@ export default async function SalesOrderShipmentPage({
           <h1 className="font-semibold text-lg tracking-tight">Shipment</h1>
           <p className="text-muted-foreground text-sm">
             SO <span className="font-mono">{soNumber ?? salesOrderId}</span>
-            {soCustomer && <span> – {soCustomer}</span>} • Shipment {shipment.shipment_sequence}
+            {soCustomer && <span> – {soCustomer}</span>} • Shipment {shipment.shipment_sequence} — {shipment.status}
           </p>
           {status === "allocated" && <p className="text-[11px] text-emerald-700">Units allocated to this shipment.</p>}
           {status === "sent-to-warehouse" && (
@@ -235,22 +235,136 @@ export default async function SalesOrderShipmentPage({
         </div>
       </div>
 
-      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="font-medium text-[11px]">Shipment details</div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <div className="text-[11px] text-muted-foreground">Status</div>
-            <div className="text-[11px] capitalize">{shipment.status}</div>
+      {showLinesEditor && (
+        <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
+          <div className="flex items-center justify-between">
+            <div className="font-medium text-[11px]">Products to add in this shipment</div>
           </div>
-          <div className="space-y-1">
-            <div className="text-[11px] text-muted-foreground">Carrier</div>
-            <div className="text-[11px]">{shipment.carrier_name || "-"}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-[11px] text-muted-foreground">Tracking #</div>
-            <div className="font-mono text-[11px]">{shipment.tracking_number || "-"}</div>
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Enter quantities to add products from the order to this shipment.
+          </p>
+
+          {lines.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">No lines for this sales order.</p>
+          ) : (
+            <form
+              action={async (formData: FormData) => {
+                "use server";
+                await allocateUnitsToShipment(salesOrderId, shipmentId, formData);
+              }}
+              className="space-y-2"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="border-b bg-muted text-[11px] text-muted-foreground">
+                    <tr>
+                      <th className="py-1 pr-2 pl-3">SKU</th>
+                      <th className="px-2 py-1">Variant</th>
+                      <th className="px-2 py-1">Product</th>
+                      <th className="px-2 py-1 text-right">Ordered (units)</th>
+                      <th className="px-2 py-1 text-right">Shipped (units)</th>
+                      <th className="px-2 py-1 text-right">Remaining (units)</th>
+                      <th className="px-2 py-1 text-right">Allocate (units)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((l: any) => (
+                      <tr key={l.sales_order_line_id} className="border-b last:border-none">
+                        <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{l.sku}</td>
+                        <td className="px-2 py-1 text-[11px]">{l.sku_var}</td>
+                        <td className="px-2 py-1 text-[11px]">{l.description}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">{l.ordered_units}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">{l.shipped_units}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">{l.remaining_units}</td>
+                        <td className="px-2 py-1 text-right text-[11px]">
+                          <input
+                            type="number"
+                            name={`allocate_${l.sales_order_line_id}`}
+                            min={0}
+                            max={l.remaining_units}
+                            className="w-24 rounded-md border border-input bg-background px-2 py-0.5 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+                >
+                  Allocate units
+                </button>
+              </div>
+            </form>
+          )}
         </div>
+      )}
+
+      {/* Inventory to send in this shipment */}
+      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
+        <div className="font-medium text-[11px]">Products in this shipment</div>
+        {!shipmentContents || shipmentContents.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No lines have been allocated to this shipment yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
+                <tr>
+                  <th className="py-1 pr-2 pl-3">SKU</th>
+                  <th className="px-2 py-1">Variant</th>
+                  <th className="px-2 py-1">Product</th>
+                  <th className="px-2 py-1 text-right">Units allocated</th>
+                  <th className="px-2 py-1 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shipmentContents.map((row: any) => (
+                  <tr key={row.id} className="border-b last:border-none">
+                    <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{row.sku}</td>
+                    <td className="px-2 py-1 text-[11px]">{row.sku_var}</td>
+                    <td className="px-2 py-1 text-[11px]">{row.description}</td>
+                    <td className="px-2 py-1 text-right text-[11px]">{row.quantity_units}</td>
+                    <td className="px-2 py-1 text-right text-[11px]">
+                      <form
+                        action={async () => {
+                          "use server";
+                          // delete a single allocation row
+                          const profile = await getCurrentUserProfile();
+                          if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+                            redirect("/unauthorized");
+                          }
+
+                          const { error } = await serverSupabase
+                            .from("so_shipment_lines")
+                            .delete()
+                            .eq("id", row.id as string);
+
+                          if (error) {
+                            console.error("Error deleting allocation row", error);
+                          }
+
+                          redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}`);
+                        }}
+                        className="inline-block"
+                      >
+                        <button
+                          type="submit"
+                          className="inline-flex items-center rounded-md border border-destructive px-2 py-0.5 text-[10px] text-destructive hover:bg-destructive/10"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Shipments list is for planning and for list mode */}
@@ -317,135 +431,6 @@ export default async function SalesOrderShipmentPage({
             )}
           </div>
         </>
-      )}
-
-      {/* Inventory to send in this shipment */}
-      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="font-medium text-[11px]">Inventory to send in this shipment</div>
-        {!shipmentContents || shipmentContents.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">No lines have been allocated to this shipment yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[11px]">
-              <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-                <tr>
-                  <th className="py-1 pr-2 pl-3">SKU</th>
-                  <th className="px-2 py-1">Variant</th>
-                  <th className="px-2 py-1">Product</th>
-                  <th className="px-2 py-1 text-right">Units allocated</th>
-                  <th className="px-2 py-1 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shipmentContents.map((row: any) => (
-                  <tr key={row.id} className="border-b last:border-none">
-                    <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{row.sku}</td>
-                    <td className="px-2 py-1 text-[11px]">{row.sku_var}</td>
-                    <td className="px-2 py-1 text-[11px]">{row.description}</td>
-                    <td className="px-2 py-1 text-right text-[11px]">{row.quantity_units}</td>
-                    <td className="px-2 py-1 text-right text-[11px]">
-                      <form
-                        action={async () => {
-                          "use server";
-                          // delete a single allocation row
-                          const profile = await getCurrentUserProfile();
-                          if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
-                            redirect("/unauthorized");
-                          }
-
-                          const { error } = await serverSupabase
-                            .from("so_shipment_lines")
-                            .delete()
-                            .eq("id", row.id as string);
-
-                          if (error) {
-                            console.error("Error deleting allocation row", error);
-                          }
-
-                          redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}`);
-                        }}
-                        className="inline-block"
-                      >
-                        <button
-                          type="submit"
-                          className="inline-flex items-center rounded-md border border-destructive px-2 py-0.5 text-[10px] text-destructive hover:bg-destructive/10"
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {showLinesEditor && (
-        <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-          <div className="flex items-center justify-between">
-            <div className="font-medium text-[11px]">Lines</div>
-          </div>
-
-          {lines.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">No lines for this sales order.</p>
-          ) : (
-            <form
-              action={async (formData: FormData) => {
-                "use server";
-                await allocateUnitsToShipment(salesOrderId, shipmentId, formData);
-              }}
-              className="space-y-2"
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[11px]">
-                  <thead className="border-b bg-muted text-[11px] text-muted-foreground">
-                    <tr>
-                      <th className="py-1 pr-2 pl-3">SKU</th>
-                      <th className="px-2 py-1">Variant</th>
-                      <th className="px-2 py-1">Product</th>
-                      <th className="px-2 py-1 text-right">Ordered (units)</th>
-                      <th className="px-2 py-1 text-right">Shipped (units)</th>
-                      <th className="px-2 py-1 text-right">Remaining (units)</th>
-                      <th className="px-2 py-1 text-right">Allocate (units)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((l: any) => (
-                      <tr key={l.sales_order_line_id} className="border-b last:border-none">
-                        <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{l.sku}</td>
-                        <td className="px-2 py-1 text-[11px]">{l.sku_var}</td>
-                        <td className="px-2 py-1 text-[11px]">{l.description}</td>
-                        <td className="px-2 py-1 text-right text-[11px]">{l.ordered_units}</td>
-                        <td className="px-2 py-1 text-right text-[11px]">{l.shipped_units}</td>
-                        <td className="px-2 py-1 text-right text-[11px]">{l.remaining_units}</td>
-                        <td className="px-2 py-1 text-right text-[11px]">
-                          <input
-                            type="number"
-                            name={`allocate_${l.sales_order_line_id}`}
-                            min={0}
-                            max={l.remaining_units}
-                            className="w-24 rounded-md border border-input bg-background px-2 py-0.5 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
-                >
-                  Allocate units
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
       )}
     </div>
   );

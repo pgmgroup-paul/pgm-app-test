@@ -5,7 +5,7 @@ import { getCurrentUserProfile } from "@/server/auth/current-user";
 
 export const dynamic = "force-dynamic";
 
-type SoStatus = "open" | "shipped" | "cancelled";
+type SoStatus = "open" | "processing" | "ready" | "shipped" | "cancelled";
 
 type SortKey = "order_desc" | "order_asc" | "requested_asc" | "requested_desc";
 
@@ -90,7 +90,14 @@ export default async function SalesOrdersPage({
   const { q, status, sort } = await searchParams;
 
   const statusFilter: SoStatus | "all" =
-    status === "open" || status === "shipped" || status === "cancelled" ? (status as SoStatus) : "open";
+    status === "open" ||
+    status === "processing" ||
+    status === "ready" ||
+    status === "shipped" ||
+    status === "cancelled" ||
+    status === "all"
+      ? (status as SoStatus | "all")
+      : "open";
 
   const sortKey: SortKey =
     sort === "order_asc" || sort === "requested_asc" || sort === "requested_desc" ? (sort as SortKey) : "order_desc";
@@ -147,6 +154,8 @@ export default async function SalesOrdersPage({
               className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="open">Open</option>
+              <option value="processing">Processing</option>
+              <option value="ready">Ready</option>
               <option value="shipped">Shipped</option>
               <option value="cancelled">Cancelled</option>
               <option value="all">All</option>
@@ -200,7 +209,25 @@ export default async function SalesOrdersPage({
                 <tr key={so.id} className="border-b last:border-none">
                   <td className="py-1 pr-2 pl-3 font-mono text-[11px]">{so.order_number}</td>
                   <td className="px-2 py-1 text-[11px]">{so.customer_name}</td>
-                  <td className="px-2 py-1 text-[11px] capitalize">{so.status}</td>
+                  <td className="px-2 py-1 text-[11px]">
+                    <span
+                      className={`capitalize px-2 py-0.5 rounded-md text-[10px] font-medium ${
+                        so.status === "open"
+                          ? "bg-gray-100 text-gray-700"
+                          : so.status === "processing"
+                            ? "bg-blue-100 text-blue-700"
+                            : so.status === "ready"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : so.status === "shipped"
+                                ? "bg-green-100 text-green-800"
+                                : so.status === "cancelled"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {so.status}
+                    </span>
+                  </td>
                   <td className="px-2 py-1 text-[11px]">
                     {so.order_date ? new Date(so.order_date).toLocaleDateString() : "-"}
                   </td>

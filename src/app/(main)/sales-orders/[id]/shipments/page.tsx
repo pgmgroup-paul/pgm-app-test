@@ -106,7 +106,7 @@ export default async function SalesOrderShipmentsPage({ params }: { params: Prom
     <div className="max-w-4xl space-y-4 p-6">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="font-semibold text-lg tracking-tight">Shipments</h1>
+          <h1 className="font-semibold text-lg tracking-tight">Prepare shipments</h1>
           <p className="text-muted-foreground text-sm">
             Sales order <span className="font-mono">{so.order_number}</span>
             {so.customer_name && <span> – {so.customer_name}</span>}
@@ -116,12 +116,37 @@ export default async function SalesOrderShipmentsPage({ params }: { params: Prom
           href={`/sales-orders/${salesOrderId}/edit`}
           className="inline-flex items-center rounded-md border px-3 py-1.5 font-medium text-[11px] hover:bg-muted"
         >
-          Back to order
+          Back to order details
         </a>
       </div>
 
       <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="font-medium text-[11px]">Existing shipments</div>
+        <div className="font-medium text-[11px]">Create new shipment</div>
+        <div className="flex items-center justify-between text-[11px]">
+          <div>
+            <span className="text-muted-foreground">Next shipment number: </span>
+            <span className="font-mono">
+              {so.order_number}-{nextSeq}
+            </span>
+          </div>
+          <form
+            action={async () => {
+              "use server";
+              await addShipmentForSo(salesOrderId);
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+            >
+              + Shipment
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
+        <div className="font-medium text-[11px]">Shipments for this order</div>
         {!shipments || shipments.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">No shipments created yet.</p>
         ) : (
@@ -146,7 +171,7 @@ export default async function SalesOrderShipmentsPage({ params }: { params: Prom
                         href={`/sales-orders/${salesOrderId}/shipments/${s.id}`}
                         className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] hover:bg-muted"
                       >
-                        Open
+                        Open shipment
                       </a>
                       {s.status === "planned" && (
                         <form
@@ -175,7 +200,7 @@ export default async function SalesOrderShipmentsPage({ params }: { params: Prom
 
       {/* Products with remaining quantity not yet allocated */}
       <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="font-medium text-[11px]">Product pending shipment assignment</div>
+        <div className="font-medium text-[11px]">Products not yet assigned to shipments</div>
         {!pendingProducts || pendingProducts.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">All product quantity already allocated in shipments.</p>
         ) : (
@@ -205,31 +230,6 @@ export default async function SalesOrderShipmentsPage({ params }: { params: Prom
             </table>
           </div>
         )}
-      </div>
-
-      <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
-        <div className="font-medium text-[11px]">Add new shipment</div>
-        <div className="flex items-center justify-between text-[11px]">
-          <div>
-            <span className="text-muted-foreground">Next shipment number: </span>
-            <span className="font-mono">
-              {so.order_number}-{nextSeq}
-            </span>
-          </div>
-          <form
-            action={async () => {
-              "use server";
-              await addShipmentForSo(salesOrderId);
-            }}
-          >
-            <button
-              type="submit"
-              className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
-            >
-              Add shipment
-            </button>
-          </form>
-        </div>
       </div>
     </div>
   );

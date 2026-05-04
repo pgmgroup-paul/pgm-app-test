@@ -205,7 +205,7 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
           type="submit"
           className="inline-flex items-center rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-xs hover:bg-primary/90"
         >
-          Save & continue
+          Continue to add products
         </button>
 
         {error === "missing-fields" && (

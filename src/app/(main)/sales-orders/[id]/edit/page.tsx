@@ -3,11 +3,85 @@ import { redirect } from "next/navigation";
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { cancelSalesOrder } from "../cancel-order";
+import { sendShipmentToWarehouse } from "../shipments/[shipmentId]/actions";
 import { AddLineForm } from "./AddLineForm";
 import { RequestedShipDateInput } from "./RequestedShipDateInput";
 import { LineQuantityInput } from "./LineQuantityInput";
 
 export const dynamic = "force-dynamic";
+
+export async function sendAllInOneShipment(salesOrderId: string) {
+  "use server";
+
+  // 1. Load sales order lines
+  const { data: lines, error: linesError } = await serverSupabase
+    .from("sales_order_lines")
+    .select("id, product_id, sku, sku_var, description, quantity_units")
+    .eq("sales_order_id", salesOrderId);
+
+  if (linesError || !lines || lines.length === 0) {
+    console.error("Error loading sales order lines for fast ship", linesError);
+    redirect(`/sales-orders/${salesOrderId}/edit?error=no-lines`);
+  }
+
+  // 2. Check existing shipments
+  const { data: shipments, error: shipmentsError } = await serverSupabase
+    .from("so_shipments")
+    .select("id")
+    .eq("sales_order_id", salesOrderId);
+
+  if (shipmentsError) {
+    console.error("Error checking existing shipments for fast ship", shipmentsError);
+    redirect(`/sales-orders/${salesOrderId}/edit?error=failed-fast-ship`);
+  }
+
+  if (shipments && shipments.length > 0) {
+    redirect(`/sales-orders/${salesOrderId}/edit?error=shipments-exist`);
+  }
+
+  // 3. Create shipment (sequence = 1)
+  const { data: newShipment, error: shipmentError } = await serverSupabase
+    .from("so_shipments")
+    .insert({
+      sales_order_id: salesOrderId,
+      shipment_sequence: 1,
+      status: "planned",
+    })
+    .select("id")
+    .single();
+
+  if (shipmentError || !newShipment) {
+    console.error("Error creating shipment for fast ship", shipmentError);
+    redirect(`/sales-orders/${salesOrderId}/edit?error=failed-fast-ship`);
+  }
+
+  const shipmentId = newShipment.id as string;
+
+  // 4. Allocate all lines with full shipment line details
+  const allocationRows = lines.map((l) => ({
+    so_shipment_id: shipmentId,
+    sales_order_line_id: l.id as string,
+    product_id: l.product_id as string,
+    sku: l.sku,
+    sku_var: l.sku_var || null,
+    description: l.description || null,
+    quantity_ordered_units: l.quantity_units,
+    quantity_shipped_units: l.quantity_units,
+  }));
+
+  const { error: allocError } = await serverSupabase.from("so_shipment_lines").insert(allocationRows);
+
+  if (allocError) {
+    console.error("Error allocating shipment lines for fast ship", allocError);
+    redirect(`/sales-orders/${salesOrderId}/edit?error=failed-fast-ship`);
+  }
+
+  // 5. Send to warehouse (reuse existing logic)
+  await sendShipmentToWarehouse(salesOrderId, shipmentId, { skipRedirect: true });
+
+  // 6. Success
+  redirect(`/sales-orders/${salesOrderId}/edit?status=fast-shipped`);
+}
 
 async function loadSalesOrder(id: string) {
   const { data: so, error } = await serverSupabase
@@ -79,7 +153,7 @@ export default async function EditSalesOrderPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; status?: string }>;
 }) {
   const profile = await getCurrentUserProfile();
 
@@ -88,7 +162,7 @@ export default async function EditSalesOrderPage({
   }
 
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, status } = await searchParams;
 
   const data = await loadSalesOrder(id);
 
@@ -99,6 +173,7 @@ export default async function EditSalesOrderPage({
   const { so, lines, shipments } = data as any;
 
   const hasShippedShipment = (shipments as any[] | undefined)?.some((s) => (s.status as string) === "shipped");
+  const hasShipments = shipments && shipments.length > 0;
   const canCancelSo = (so.status as string) !== "cancelled" && !hasShippedShipment;
 
   return (
@@ -137,9 +212,24 @@ export default async function EditSalesOrderPage({
               type="submit"
               className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
             >
-              Shipments
+              Multi-shipment
             </button>
           </form>
+          {!hasShipments && so.status !== "cancelled" && (
+            <form
+              action={async () => {
+                "use server";
+                await sendAllInOneShipment(so.id as string);
+              }}
+            >
+              <button
+                type="submit"
+                className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+              >
+                Send to warehouse as 1 shipment
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
@@ -200,6 +290,8 @@ export default async function EditSalesOrderPage({
 
       <AddLineForm
         salesOrderId={so.id as string}
+        error={error}
+        status={status}
         action={async (formData: FormData) => {
           "use server";
 

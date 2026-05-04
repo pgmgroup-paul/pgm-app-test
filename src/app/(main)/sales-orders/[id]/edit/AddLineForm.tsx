@@ -9,7 +9,7 @@ interface ProductSearchResult {
   product_name: string | null;
 }
 
-export function AddLineForm({ salesOrderId, action, error }: { salesOrderId: string; action: (formData: FormData) => Promise<void>; error?: string; }) {
+export function AddLineForm({ salesOrderId, action, error, status }: { salesOrderId: string; action: (formData: FormData) => Promise<void>; error?: string; status?: string; }) {
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
@@ -166,7 +166,14 @@ export function AddLineForm({ salesOrderId, action, error }: { salesOrderId: str
           {error === "failed-to-delete-line" && "Failed to remove line."}
           {error === "failed-to-update-line" && "Failed to update quantity."}
           {error === "failed-to-update-date" && "Failed to update requested ship date."}
+          {error === "no-lines" && "Add products before sending to warehouse."}
+          {error === "shipments-exist" && "Cannot use this option once shipments have been created."}
+          {error === "failed-fast-ship" && "Failed to send shipment."}
         </p>
+      )}
+
+      {status === "fast-shipped" && (
+        <p className="pt-2 text-[11px] text-emerald-700">Order sent as 1 shipment to warehouse.</p>
       )}
     </div>
   );

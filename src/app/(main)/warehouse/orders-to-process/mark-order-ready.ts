@@ -22,7 +22,7 @@ export async function markShipmentReady(formData: FormData): Promise<void> {
   // Load current status for validation
   const { data: shipment, error: loadError } = await supabase
     .from("so_shipments")
-    .select("status")
+    .select("status, sales_order_id")
     .eq("id", shipmentId)
     .maybeSingle();
 
@@ -59,6 +59,33 @@ export async function markShipmentReady(formData: FormData): Promise<void> {
     console.error("Error marking shipment as ready", error);
     // Even on error, return to list; for now we don't surface error state in UI.
     redirect("/warehouse/orders-to-process");
+  }
+
+  // Get sales order id
+  const salesOrderId = (shipment as any).sales_order_id as string;
+
+  // Load all shipments for this sales order
+  const { data: allShipments, error: allShipmentsError } = await supabase
+    .from("so_shipments")
+    .select("status")
+    .eq("sales_order_id", salesOrderId);
+
+  if (allShipmentsError) {
+    console.error("Error loading shipments for SO status update", allShipmentsError);
+  } else if (allShipments && allShipments.length > 0) {
+    // Check if all shipments are ready
+    const hasNonReady = allShipments.some((s) => (s as any).status !== "ready");
+    if (!hasNonReady) {
+      // Update sales order status to ready
+      const { error: soUpdateError } = await supabase
+        .from("sales_orders")
+        .update({ status: "ready" })
+        .eq("id", salesOrderId);
+
+      if (soUpdateError) {
+        console.error("Error updating sales order to ready", soUpdateError);
+      }
+    }
   }
 
   redirect("/warehouse/orders-to-process?ready=1");

@@ -79,6 +79,16 @@ export async function sendAllInOneShipment(salesOrderId: string) {
   // 5. Send to warehouse (reuse existing logic)
   await sendShipmentToWarehouse(salesOrderId, shipmentId, { skipRedirect: true });
 
+  // Update sales order status to "processing"
+  const { error: soUpdateError } = await serverSupabase
+    .from("sales_orders")
+    .update({ status: "processing" })
+    .eq("id", salesOrderId);
+
+  if (soUpdateError) {
+    console.error("Error updating sales order to processing", soUpdateError);
+  }
+
   // 6. Success
   redirect(`/sales-orders/${salesOrderId}/edit?status=fast-shipped`);
 }

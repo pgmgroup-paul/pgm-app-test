@@ -185,6 +185,26 @@ export async function sendShipmentToWarehouse(
     redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=packing-error`);
   }
 
+  // Ensure Sales Order is marked as processing when shipment is sent
+  const { data: so, error: soLoadError } = await serverSupabase
+    .from("sales_orders")
+    .select("status")
+    .eq("id", salesOrderId)
+    .maybeSingle();
+
+  if (soLoadError) {
+    console.error("Error loading sales order for status update", soLoadError);
+  } else if (so && (so as any).status === "open") {
+    const { error: soUpdateError } = await serverSupabase
+      .from("sales_orders")
+      .update({ status: "processing" })
+      .eq("id", salesOrderId);
+
+    if (soUpdateError) {
+      console.error("Error updating sales order to processing", soUpdateError);
+    }
+  }
+
   if (!options?.skipRedirect) {
     redirect(`/sales-orders/${salesOrderId}/shipments/${shipmentId}?status=sent-to-warehouse`);
   }

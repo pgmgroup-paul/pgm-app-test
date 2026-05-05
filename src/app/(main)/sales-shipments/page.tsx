@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 import { markShipmentAsShipped } from "./mark-shipped";
@@ -5,10 +7,11 @@ import { cancelShipment } from "./cancel-shipment";
 
 export const dynamic = "force-dynamic";
 
-type ShipmentStatusFilter = "ready" | "shipped" | "all";
+type ShipmentStatusFilter = "ready" | "processing" | "shipped" | "all";
 
 interface ReadyShipmentRow {
-  id: string;
+  id: string; // shipment id
+  sales_order_id: string;
   shipment_sequence: number;
   status: string;
   order_number: string;
@@ -28,7 +31,7 @@ async function loadShipmentsByStatus(statusFilter: ShipmentStatusFilter): Promis
     )
     .order("created_at", { ascending: true });
 
-  if (statusFilter === "ready" || statusFilter === "shipped") {
+  if (statusFilter === "ready" || statusFilter === "processing" || statusFilter === "shipped") {
     query = query.eq("status", statusFilter);
   }
 
@@ -45,6 +48,7 @@ async function loadShipmentsByStatus(statusFilter: ShipmentStatusFilter): Promis
     const so = (row as any).sales_orders as any;
     return {
       id: row.id as string,
+      sales_order_id: row.sales_order_id as string,
       shipment_sequence: Number(row.shipment_sequence) || 0,
       status: row.status as string,
       order_number: (so?.order_number as string) || (row.sales_order_id as string),
@@ -68,7 +72,9 @@ export default async function ReadyShipmentsPage({
   const { status } = await searchParams;
 
   const statusFilter: ShipmentStatusFilter =
-    status === "ready" || status === "shipped" || status === "all" ? (status as ShipmentStatusFilter) : "ready";
+    status === "ready" || status === "processing" || status === "shipped" || status === "all"
+      ? (status as ShipmentStatusFilter)
+      : "ready";
 
   const shipments = await loadShipmentsByStatus(statusFilter);
 
@@ -88,6 +94,14 @@ export default async function ReadyShipmentsPage({
           }`}
         >
           Ready
+        </a>
+        <a
+          href="/sales-shipments?status=processing"
+          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+            statusFilter === "processing" ? "bg-background text-foreground" : "text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Processing
         </a>
         <a
           href="/sales-shipments?status=shipped"
@@ -110,7 +124,11 @@ export default async function ReadyShipmentsPage({
       <div className="space-y-1" />
 
       {shipments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No shipments ready to ship.</p>
+        <p className="text-sm text-muted-foreground">
+          {statusFilter === "ready" && "No shipments ready to ship."}
+          {statusFilter === "shipped" && "No shipped shipments found."}
+          {statusFilter === "all" && "No shipments found."}
+        </p>
       ) : (
         <div className="rounded-md border px-3 py-3 text-xs">
           <div className="font-medium text-[11px] mb-1">Shipments</div>
@@ -130,9 +148,15 @@ export default async function ReadyShipmentsPage({
                 {shipments.map((s) => (
                   <tr key={s.id} className="border-b last:border-none">
                     <td className="py-1 pr-2 pl-3 font-mono text-[11px]">
-                      {s.order_number}-{s.shipment_sequence}
+                      <Link href={`/sales-orders/${s.sales_order_id}/shipments/${s.id}`} className="text-primary hover:underline">
+                        {s.order_number}-{s.shipment_sequence}
+                      </Link>
                     </td>
-                    <td className="px-2 py-1 font-mono text-[11px]">{s.order_number}</td>
+                    <td className="px-2 py-1 font-mono text-[11px]">
+                      <Link href={`/sales-orders/${s.sales_order_id}/edit`} className="text-primary hover:underline">
+                        {s.order_number}
+                      </Link>
+                    </td>
                     <td className="px-2 py-1 text-[11px]">{s.customer_name ?? "-"}</td>
                     <td className="px-2 py-1 text-[11px]">
                       {s.requested_ship_date

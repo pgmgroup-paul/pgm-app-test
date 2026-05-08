@@ -251,39 +251,45 @@ export default async function EditSalesOrderPage({
           </div>
           <div className="space-y-1">
             <div className="text-[11px] text-muted-foreground">Requested ship date</div>
-            <RequestedShipDateInput
-              salesOrderId={so.id as string}
-              defaultValue={so.requested_ship_date || ""}
-              onSubmitAction={async (formData: FormData) => {
-                "use server";
+            {so.status === "shipped" ? (
+              <p className="text-[11px]">
+                {so.requested_ship_date ? new Date(so.requested_ship_date).toLocaleDateString() : "-"}
+              </p>
+            ) : (
+              <RequestedShipDateInput
+                salesOrderId={so.id as string}
+                defaultValue={so.requested_ship_date || ""}
+                onSubmitAction={async (formData: FormData) => {
+                  "use server";
 
-                const salesOrderId = formData.get("sales_order_id")?.toString();
-                const requestedShipDateRaw = formData.get("requested_ship_date")?.toString() || "";
-                const requestedShipDate = requestedShipDateRaw || null;
+                  const salesOrderId = formData.get("sales_order_id")?.toString();
+                  const requestedShipDateRaw = formData.get("requested_ship_date")?.toString() || "";
+                  const requestedShipDate = requestedShipDateRaw || null;
 
-                console.log("Update requested_ship_date action triggered");
-                console.log("salesOrderId:", salesOrderId);
-                console.log("requestedShipDateRaw:", requestedShipDateRaw);
+                  console.log("Update requested_ship_date action triggered");
+                  console.log("salesOrderId:", salesOrderId);
+                  console.log("requestedShipDateRaw:", requestedShipDateRaw);
 
-                if (!salesOrderId) {
-                  redirect(`/sales-orders/${id}/edit?error=failed-to-update-date`);
-                }
+                  if (!salesOrderId) {
+                    redirect(`/sales-orders/${id}/edit?error=failed-to-update-date`);
+                  }
 
-                const { error } = await serverSupabase
-                  .from("sales_orders")
-                  .update({ requested_ship_date: requestedShipDate })
-                  .eq("id", salesOrderId);
+                  const { error } = await serverSupabase
+                    .from("sales_orders")
+                    .update({ requested_ship_date: requestedShipDate })
+                    .eq("id", salesOrderId);
 
-                console.log("Update result error:", error);
+                  console.log("Update result error:", error);
 
-                if (error) {
-                  console.error("Error updating requested ship date", error);
-                  redirect(`/sales-orders/${id}/edit?error=failed-to-update-date`);
-                }
+                  if (error) {
+                    console.error("Error updating requested ship date", error);
+                    redirect(`/sales-orders/${id}/edit?error=failed-to-update-date`);
+                  }
 
-                redirect(`/sales-orders/${id}/edit`);
-              }}
-            />
+                  redirect(`/sales-orders/${id}/edit`);
+                }}
+              />
+            )}
           </div>
           <div className="space-y-1">
             <div className="text-[11px] text-muted-foreground">Status</div>
@@ -298,11 +304,12 @@ export default async function EditSalesOrderPage({
         )}
       </div>
 
-      <AddLineForm
-        salesOrderId={so.id as string}
-        error={error}
-        status={status}
-        action={async (formData: FormData) => {
+      {so.status !== "shipped" && (
+        <AddLineForm
+          salesOrderId={so.id as string}
+          error={error}
+          status={status}
+          action={async (formData: FormData) => {
           "use server";
 
           const profile = await getCurrentUserProfile();
@@ -361,6 +368,7 @@ export default async function EditSalesOrderPage({
           redirect(`/sales-orders/${id}/edit`);
         }}
       />
+      )}
 
       {/* Shipments summary removed: shown on shipment page instead */}
       <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
@@ -442,12 +450,14 @@ export default async function EditSalesOrderPage({
                         }}
                       >
                         <input type="hidden" name="line_id" value={line.id as string} />
-                        <button
-                          type="submit"
-                          className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
-                        >
-                          Remove
-                        </button>
+                        {so.status !== "shipped" && (
+                          <button
+                            type="submit"
+                            className="inline-flex items-center rounded-md border px-2 py-0.5 font-medium text-[10px] hover:bg-muted"
+                          >
+                            Remove
+                          </button>
+                        )}
                       </form>
                     </td>
                   </tr>

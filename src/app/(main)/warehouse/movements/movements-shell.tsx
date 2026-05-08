@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { loadMovementsBySku, type MovementRow, type MovementsState } from "./movements-load";
 import { loadRecentMovements, type RecentMovementsState } from "./load-recent";
@@ -15,6 +15,14 @@ export function MovementsShell() {
     ok: null,
   });
   const [showFilters, setShowFilters] = useState(false);
+
+  const recentFormRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    if (activeTab === "recent" && recentState.ok === null) {
+      recentFormRef.current?.requestSubmit();
+    }
+  }, [activeTab, recentState.ok]);
 
   // Recent Activity filters (desktop-only UI for now)
   const [recentSearch, setRecentSearch] = useState<string>("");
@@ -334,10 +342,13 @@ export function MovementsShell() {
         <div className="space-y-3">
           {/* Filters form (desktop) */}
           <form
+            ref={recentFormRef}
             key={JSON.stringify(recentState.filters || {})}
             action={recentAction}
             className="space-y-2 text-xs"
           >
+            <input type="hidden" name="datePreset" value="today" />
+            <input type="hidden" name="movementType" value="all" />
             {/* Desktop filter bar */}
             <div className="hidden items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs md:flex">
                 {/* Date range */}
@@ -405,7 +416,7 @@ export function MovementsShell() {
             <>
               {/* Debug: show current row count */}
               <div className="text-[10px] text-muted-foreground">
-                Rows: {recentState.rows?.length ?? 0}
+                Today's movements: {recentState.rows?.length ?? 0}
               </div>
 
               {/* Desktop + mobile results */}

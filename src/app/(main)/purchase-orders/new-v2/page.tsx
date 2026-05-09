@@ -106,7 +106,7 @@ export default async function NewPurchaseOrderV2Page({
   return (
     <div className="max-w-2xl space-y-4 p-6">
       <div className="space-y-1">
-        <h1 className="font-semibold text-lg tracking-tight">New purchase order (V2)</h1>
+        <h1 className="font-semibold text-lg tracking-tight">New purchase order</h1>
         <div className="flex items-center gap-2 text-sm">
           <h2 className="font-medium text-sm">
             {po?.po_number || "Draft PO"}
@@ -131,6 +131,25 @@ export default async function NewPurchaseOrderV2Page({
 
       <form action={updatePurchaseOrder} className="space-y-3 rounded-md border px-3 py-3 text-sm">
         <input type="hidden" name="id" value={poId} />
+
+        <div className="space-y-1">
+          <label htmlFor="po_number" className="font-medium">
+            PO Number
+          </label>
+          {po?.status === "draft" ? (
+            <input
+              id="po_number"
+              name="po_number"
+              type="text"
+              required
+              disabled={isLocked}
+              defaultValue={po?.po_number || ""}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+            />
+          ) : (
+            <div className="font-mono text-sm">{po?.po_number}</div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
@@ -227,6 +246,15 @@ export default async function NewPurchaseOrderV2Page({
 
         {error === "missing-supplier" && <p className="mt-2 text-destructive text-xs">Please select a supplier.</p>}
         {error === "create-failed" && <p className="mt-2 text-destructive text-xs">Failed to create purchase order.</p>}
+        {error === "missing-po-number" && (
+          <p className="mt-2 text-destructive text-xs">PO Number is required while the purchase order is in draft status.</p>
+        )}
+        {error === "duplicate-po-number" && (
+          <p className="mt-2 text-destructive text-xs">Another purchase order already uses this PO Number. Please choose a different one.</p>
+        )}
+        {error === "po-number-not-editable" && (
+          <p className="mt-2 text-destructive text-xs">PO Number can only be edited while the purchase order is in draft status.</p>
+        )}
       </form>
 
       {poId && (

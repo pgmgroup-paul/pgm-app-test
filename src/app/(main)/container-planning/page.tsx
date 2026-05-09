@@ -55,6 +55,7 @@ export default function ContainerPlanningPage() {
     key: "ship_date",
     direction: "asc",
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   const getMaxCartons = (lineId: string) => {
     const line = availableItems.find((l) => l.purchase_order_line_id === lineId);
@@ -174,8 +175,19 @@ export default function ContainerPlanningPage() {
     })
     .filter(({ remaining }) => remaining > 0);
 
+  const filteredAvailableWithRemaining = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return availableWithRemaining;
+
+    return availableWithRemaining.filter(({ item }) => {
+      const po = (item.po_number || "").toLowerCase();
+      const sku = (item.product?.sku || "").toLowerCase();
+      return po.includes(term) || sku.includes(term);
+    });
+  }, [availableWithRemaining, searchTerm]);
+
   const sortedAvailableWithRemaining = useMemo(() => {
-    const items = [...availableWithRemaining];
+    const items = [...filteredAvailableWithRemaining];
     if (!sortConfig.key) return items;
 
     items.sort((a, b) => {
@@ -304,7 +316,7 @@ export default function ContainerPlanningPage() {
         <div className="space-y-1">
           <h1 className="font-semibold text-2xl tracking-tight">Container Planning</h1>
           <p className="text-muted-foreground text-sm">
-            Single-container planning view. Purchase order lines load automatically; then add cartons into the container.
+            Build a container by selecting products and allocating cartons from available purchase orders.
           </p>
         </div>
         <button
@@ -321,7 +333,7 @@ export default function ContainerPlanningPage() {
 
       {/* SECTION 1: Container */}
       <div className="space-y-2 rounded-md border px-3 py-3">
-        <div className="font-medium text-[11px] mb-1">Container</div>
+        <div className="font-medium text-[11px] mb-1">Container's Capacity</div>
         <div className="text-[11px] text-muted-foreground">
           Total weight:{" "}
           <span className={isWeightExceeded ? "text-red-600 font-semibold" : "font-mono"}>
@@ -451,9 +463,21 @@ export default function ContainerPlanningPage() {
         )}
       </div>
 
-      {/* SECTION 2: Available to Add */}
+      {/* SECTION 2: Allocate Products to Container */}
       <div className="space-y-2 rounded-md border px-3 py-3">
-        <div className="font-medium text-[11px] mb-1">Available to Add</div>
+        <div className="font-medium text-[11px] mb-0.5">Allocate Products to Container</div>
+        <p className="text-[11px] text-muted-foreground mb-1">
+          Search by PO or SKU, then add cartons to the current container plan.
+        </p>
+        <div className="mb-1">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search PO or SKU..."
+            className="w-full max-w-xs rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
         {sortedAvailableWithRemaining.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">No cartons available to add. Load PO lines or adjust allocations.</p>
         ) : (

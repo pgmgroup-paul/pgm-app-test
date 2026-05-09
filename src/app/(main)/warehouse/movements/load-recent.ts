@@ -39,6 +39,20 @@ export async function loadRecentMovements(
 
   console.log({ datePreset, movementType, search });
 
+  return loadRecentMovementsCore({ supabase, datePreset, movementType, search });
+}
+
+async function loadRecentMovementsCore({
+  supabase,
+  datePreset,
+  movementType,
+  search,
+}: {
+  supabase: typeof serverSupabase;
+  datePreset: string;
+  movementType: string;
+  search: string;
+}): Promise<RecentMovementsState> {
   let query = supabase
     .from("inventory_movements")
     .select(
@@ -61,13 +75,21 @@ export async function loadRecentMovements(
   let endDate: Date | null = null;
 
   if (datePreset === "today") {
-    // Use UTC start-of-day to align with UTC timestamps in the database
-    startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    // Use Pacific day boundaries for "today" [todayStart, tomorrowStart)
+    const { year, month, day } = getPacificDateParts(now);
+    const todayStart = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00-07:00`);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    startDate = todayStart;
+    endDate = tomorrowStart;
   } else if (datePreset === "yesterday") {
-    const todayUtcStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const yesterdayUtcStart = new Date(todayUtcStart.getTime() - 24 * 60 * 60 * 1000);
-    startDate = yesterdayUtcStart;
-    endDate = todayUtcStart;
+    // Use Pacific day boundaries for "yesterday" [yesterdayStart, todayStart)
+    const { year, month, day } = getPacificDateParts(now);
+    const todayStart = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00-07:00`);
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    startDate = yesterdayStart;
+    endDate = todayStart;
   } else if (datePreset === "last7") {
     startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   } else if (datePreset === "last30") {
@@ -129,4 +151,27 @@ export async function loadRecentMovements(
       search,
     },
   };
+}
+
+function getPacificDateParts(date: Date) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  const day = Number(parts.find((p) => p.type === "day")?.value);
+  return { year, month, day };
+}
+
+export async function getInitialRecentMovements(): Promise<RecentMovementsState> {
+  return loadRecentMovementsCore({
+    supabase: serverSupabase,
+    datePreset: "today",
+    movementType: "all",
+    search: "",
+  });
 }

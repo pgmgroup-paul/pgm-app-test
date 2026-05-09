@@ -1,6 +1,8 @@
 import { MovementsShell } from "./movements-shell";
+import { getInitialRecentMovements } from "./load-recent";
 
-export default function WarehouseMovementsPage() {
+export default async function WarehouseMovementsPage() {
+  const initialRecentState = await getInitialRecentMovements();
   return (
     <div className="flex min-h-screen flex-col space-y-4">
       <div>
@@ -11,7 +13,7 @@ export default function WarehouseMovementsPage() {
       </div>
 
       <div className="flex-1 flex flex-col">
-        <MovementsShell />
+        <MovementsShell initialRecentState={initialRecentState} />
       </div>
     </div>
   );

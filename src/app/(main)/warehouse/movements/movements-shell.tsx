@@ -1,28 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 
 import { loadMovementsBySku, type MovementRow, type MovementsState } from "./movements-load";
 import { loadRecentMovements, type RecentMovementsState } from "./load-recent";
 
-export function MovementsShell() {
+export function MovementsShell({ initialRecentState }: { initialRecentState: RecentMovementsState }) {
   const [activeTab, setActiveTab] = useState<"sku" | "recent">("sku");
 
   const [state, action] = useActionState<MovementsState, FormData>(loadMovementsBySku, {
     ok: null,
   });
-  const [recentState, recentAction] = useActionState<RecentMovementsState, FormData>(loadRecentMovements, {
-    ok: null,
-  });
+  const [recentState, recentAction] = useActionState<RecentMovementsState, FormData>(loadRecentMovements, initialRecentState);
   const [showFilters, setShowFilters] = useState(false);
-
-  const recentFormRef = useRef<HTMLFormElement | null>(null);
-
-  useEffect(() => {
-    if (activeTab === "recent" && recentState.ok === null) {
-      recentFormRef.current?.requestSubmit();
-    }
-  }, [activeTab, recentState.ok]);
 
   // Recent Activity filters (desktop-only UI for now)
   const [recentSearch, setRecentSearch] = useState<string>("");
@@ -342,13 +332,10 @@ export function MovementsShell() {
         <div className="space-y-3">
           {/* Filters form (desktop) */}
           <form
-            ref={recentFormRef}
             key={JSON.stringify(recentState.filters || {})}
             action={recentAction}
             className="space-y-2 text-xs"
           >
-            <input type="hidden" name="datePreset" value="today" />
-            <input type="hidden" name="movementType" value="all" />
             {/* Desktop filter bar */}
             <div className="hidden items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs md:flex">
                 {/* Date range */}
@@ -360,7 +347,7 @@ export function MovementsShell() {
                     id="recent-date"
                     name="datePreset"
                     className="h-7 rounded-md border bg-background px-2 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    defaultValue={recentState.filters?.datePreset ?? "last7"}
+                    defaultValue={recentState.filters?.datePreset ?? "today"}
                     onChange={(e) => {
                       e.currentTarget.form?.requestSubmit();
                     }}

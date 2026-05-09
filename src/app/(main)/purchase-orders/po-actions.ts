@@ -86,6 +86,7 @@ export async function updatePurchaseOrder(formData: FormData): Promise<void> {
   const shipDateRaw = (formData.get("ship_date") || "").toString().trim();
   const etaRaw = (formData.get("eta") || "").toString().trim();
   const notes = (formData.get("notes") || "").toString().trim();
+  const poNumberRaw = (formData.get("po_number") || "").toString().trim();
 
   if (!id) {
     redirect("/purchase-orders/new-v2?error=missing-id");
@@ -95,12 +96,59 @@ export async function updatePurchaseOrder(formData: FormData): Promise<void> {
     redirect(`/purchase-orders/new-v2?id=${id}&error=missing-supplier`);
   }
 
+  // Load current PO to enforce po_number editing rules
+  const { data: existingPo, error: loadError } = await serverSupabase
+    .from("purchase_orders")
+    .select("po_number, status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (loadError || !existingPo) {
+    console.error("Error loading purchase order before update", loadError);
+    redirect(`/purchase-orders/new-v2?id=${id}&error=update-failed`);
+  }
+
+  const currentStatus = (existingPo as any).status as string;
+  const currentPoNumber = (existingPo as any).po_number as string;
+
+  let newPoNumber = currentPoNumber;
+
+  if (currentStatus === "draft") {
+    // In draft, PO number is required and editable
+    if (!poNumberRaw) {
+      redirect(`/purchase-orders/new-v2?id=${id}&error=missing-po-number`);
+    }
+
+    // Ensure uniqueness (case-sensitive match, excluding this PO)
+    const { data: existingWithNumber, error: dupCheckError } = await serverSupabase
+      .from("purchase_orders")
+      .select("id")
+      .eq("po_number", poNumberRaw)
+      .neq("id", id)
+      .maybeSingle();
+
+    if (dupCheckError) {
+      console.error("Error checking duplicate PO number", dupCheckError);
+      redirect(`/purchase-orders/new-v2?id=${id}&error=duplicate-po-number`);
+    }
+
+    if (existingWithNumber) {
+      redirect(`/purchase-orders/new-v2?id=${id}&error=duplicate-po-number`);
+    }
+
+    newPoNumber = poNumberRaw;
+  } else if (poNumberRaw && poNumberRaw !== currentPoNumber) {
+    // PO number changes are not allowed once the PO is no longer in draft
+    redirect(`/purchase-orders/new-v2?id=${id}&error=po-number-not-editable`);
+  }
+
   const ship_date = shipDateRaw || null;
   const eta = etaRaw || null;
 
   const { error } = await serverSupabase
     .from("purchase_orders")
     .update({
+      po_number: newPoNumber,
       supplier: supplier || null,
       terms: terms || null,
       ship_date,

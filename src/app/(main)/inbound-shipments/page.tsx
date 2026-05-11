@@ -2,11 +2,25 @@
 
 import { useEffect, useState } from "react";
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "-";
+  const datePart = value.split("T")[0];
+  const [yearStr, monthStr, dayStr] = datePart.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!year || !month || !day) return "-";
+  const d = new Date(year, month - 1, day);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString();
+}
+
 interface ShipmentRow {
   id: string;
   shipment_number: string | null;
   bol_number?: string | null;
   status: string | null;
+  eta?: string | null;
   created_at: string | null;
   container_count?: number;
   ship_date?: string | null;
@@ -14,7 +28,7 @@ interface ShipmentRow {
 
 export default function InboundShipmentsPage() {
   const [shipments, setShipments] = useState<ShipmentRow[]>([]);
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("Draft");
   const [statuses, setStatuses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -46,8 +60,8 @@ export default function InboundShipmentsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           style={{ padding: "2px 4px", fontSize: 12 }}
         >
-          <option value="active">Active</option>
           <option value="all">All</option>
+          <option value="active">Active</option>
           {statuses.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -61,6 +75,7 @@ export default function InboundShipmentsPage() {
             <th style={{ textAlign: "left", padding: "4px 6px", borderBottom: "1px solid #ddd" }}>Shipment #</th>
             <th style={{ textAlign: "left", padding: "4px 6px", borderBottom: "1px solid #ddd" }}>Status</th>
             <th style={{ textAlign: "left", padding: "4px 6px", borderBottom: "1px solid #ddd" }}>Containers</th>
+            <th style={{ textAlign: "left", padding: "4px 6px", borderBottom: "1px solid #ddd" }}>ETA</th>
             <th style={{ textAlign: "left", padding: "4px 6px", borderBottom: "1px solid #ddd" }}>Ship Date</th>
             <th style={{ padding: "4px 6px", borderBottom: "1px solid #ddd" }}></th>
           </tr>
@@ -76,7 +91,10 @@ export default function InboundShipmentsPage() {
                 {s.container_count ?? 0}
               </td>
               <td style={{ padding: "4px 6px", borderBottom: "1px solid #f0f0f0" }}>
-                {s.ship_date ? new Date(s.ship_date).toLocaleDateString() : "-"}
+                {formatDate(s.eta)}
+              </td>
+              <td style={{ padding: "4px 6px", borderBottom: "1px solid #f0f0f0" }}>
+                {formatDate(s.ship_date)}
               </td>
               <td style={{ padding: "4px 6px", borderBottom: "1px solid #f0f0f0", textAlign: "right" }}>
                 <a
@@ -90,7 +108,7 @@ export default function InboundShipmentsPage() {
           ))}
           {shipments.length === 0 && (
             <tr>
-              <td colSpan={4} style={{ padding: "4px 6px", color: "#777", fontStyle: "italic" }}>
+              <td colSpan={5} style={{ padding: "4px 6px", color: "#777", fontStyle: "italic" }}>
                 No shipments found
               </td>
             </tr>

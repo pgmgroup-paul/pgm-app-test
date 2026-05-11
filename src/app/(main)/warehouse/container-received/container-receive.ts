@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 
@@ -39,6 +41,51 @@ export async function markContainerReceived(
         ok: false,
         error: rpcError.message || "Failed to record container receipt",
       };
+    }
+
+    // After successful receive, check if this container belongs to a shipment and auto-complete if all are unloaded
+    const { data: containerRow, error: containerLoadError } = await supabase
+      .from("containers_v2")
+      .select("id, shipment_id")
+      .eq("id", containerId)
+      .maybeSingle();
+
+    if (containerLoadError) {
+      console.error("Error loading container for shipment completion check", containerLoadError);
+    } else if (containerRow && (containerRow as any).shipment_id) {
+      const shipmentId = (containerRow as any).shipment_id as string;
+
+      // Load all containers for this shipment
+      const { data: shipmentContainers, error: shipmentContainersError } = await supabase
+        .from("containers_v2")
+        .select("status")
+        .eq("shipment_id", shipmentId);
+
+      if (shipmentContainersError) {
+        console.error("Error loading shipment containers for completion check", shipmentContainersError);
+      } else if (shipmentContainers && shipmentContainers.length > 0) {
+        const allUnloaded = shipmentContainers.every((c) => {
+          const status = ((c as any).status || "").toString().trim();
+          return status === "Unloaded";
+        });
+
+        if (allUnloaded) {
+          const { error: shipmentUpdateError } = await supabase
+            .from("shipments_v2")
+            .update({ status: "Completed" })
+            .eq("id", shipmentId);
+
+          if (shipmentUpdateError) {
+            console.error("Error auto-completing shipment after all containers unloaded", shipmentUpdateError);
+          } else {
+            // Revalidate related shipment and container pages so status updates are visible
+            revalidatePath(`/inbound-shipments/${shipmentId}`);
+            revalidatePath("/inbound-shipments");
+            revalidatePath(`/inbound-containers/${containerId}`);
+            revalidatePath("/inbound-containers");
+          }
+        }
+      }
     }
   } catch (err: any) {
     console.error("Exception in receive_container_v2 RPC", err);

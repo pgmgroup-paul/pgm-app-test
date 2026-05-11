@@ -71,6 +71,36 @@ async function updateShipment(formData: FormData) {
     return;
   }
 
+  // Sync ETA to all containers assigned to this shipment
+  const { error: containersEtaError } = await serverSupabase
+    .from("containers_v2")
+    .update({ eta })
+    .eq("shipment_id", shipmentId);
+
+  if (containersEtaError) {
+    console.error("Error syncing container ETAs for shipment", containersEtaError);
+  } else {
+    // Revalidate inbound container detail pages for affected containers
+    const { data: containers, error: containersLoadError } = await serverSupabase
+      .from("containers_v2")
+      .select("id")
+      .eq("shipment_id", shipmentId);
+
+    if (containersLoadError) {
+      console.error("Error loading containers for revalidation", containersLoadError);
+    } else {
+      for (const c of containers || []) {
+        const cid = (c as any).id as string;
+        if (cid) {
+          revalidatePath(`/inbound-containers/${cid}`);
+        }
+      }
+    }
+
+    // Revalidate inbound containers list so ETA column updates
+    revalidatePath("/inbound-containers");
+  }
+
   // Ensure fresh data on re-render
   revalidatePath(`/inbound-shipments/${shipmentId}`);
 }
@@ -112,9 +142,22 @@ async function addContainer(formData: FormData) {
     return;
   }
 
+  // Load current shipment ETA to sync into container
+  const { data: shipment, error: shipmentLoadError } = await serverSupabase
+    .from("shipments_v2")
+    .select("eta")
+    .eq("id", shipmentId)
+    .maybeSingle();
+
+  if (shipmentLoadError) {
+    console.error("Error loading shipment ETA for addContainer", shipmentLoadError);
+  }
+
+  const eta = (shipment as any)?.eta ?? null;
+
   const { error } = await serverSupabase
     .from("containers_v2")
-    .update({ shipment_id: shipmentId })
+    .update({ shipment_id: shipmentId, eta })
     .eq("id", containerId);
 
   if (error) {
@@ -263,7 +306,6 @@ export default async function Page({ params }: any) {
                 >
                   <option value="">Select status</option>
                   <option value="Draft">Draft</option>
-                  <option value="Planned">Planned</option>
                   <option value="In Transit">In Transit</option>
                   <option value="Arrived">Arrived</option>
                   <option value="Completed">Completed</option>

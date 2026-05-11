@@ -40,7 +40,13 @@ const statusColorMap: Record<string, string> = {
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
-  const d = new Date(value);
+  const datePart = value.split("T")[0];
+  const [yearStr, monthStr, dayStr] = datePart.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!year || !month || !day) return "—";
+  const d = new Date(year, month - 1, day);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-US", {
     month: "2-digit",

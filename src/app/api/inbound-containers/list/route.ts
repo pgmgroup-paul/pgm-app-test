@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
     let query = supabase
       .from("inbound_containers_list")
-      .select("container_id, container_number, bol_number, status, eta, total_cartons, total_units, sku_count, items_detail")
+      .select("container_id, container_number, bol_number, status, shipment_status, eta, total_cartons, total_units, sku_count, items_detail")
       .order("eta", { ascending: true, nullsFirst: true });
 
     if (statusFilter !== "all") {

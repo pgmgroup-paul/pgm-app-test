@@ -8,6 +8,7 @@ interface InboundContainerRow {
   container_number: string | null;
   bol_number: string | null;
   status: string | null;
+  shipment_status?: string | null;
   eta: string | null;
   total_cartons: number | null;
   total_units: number | null;
@@ -19,6 +20,19 @@ interface InboundContainerRow {
     cartons: number;
     units: number;
   }[];
+}
+
+function formatDate(value: string | null): string {
+  if (!value) return "-";
+  const datePart = value.split("T")[0];
+  const [yearStr, monthStr, dayStr] = datePart.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!year || !month || !day) return "-";
+  const d = new Date(year, month - 1, day);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString();
 }
 
 export default function InboundContainersPage() {
@@ -227,10 +241,16 @@ export default function InboundContainersPage() {
                         {c.bol_number || "\u2014"}
                       </td>
                       <td style={{ padding: "6px 8px", borderBottom: "1px solid #f3f4f6" }}>
-                        {c.status || "-"}
+                        {(() => {
+                          const shipmentStatus = (c.shipment_status || "").trim();
+                          const displayStatus = ["Draft", "Booked", "In Transit"].includes(shipmentStatus)
+                            ? shipmentStatus
+                            : c.status || "Draft";
+                          return displayStatus;
+                        })()}
                       </td>
                       <td style={{ padding: "6px 8px", borderBottom: "1px solid #f3f4f6" }}>
-                        {c.eta ? new Date(c.eta).toLocaleDateString() : "-"}
+                        {formatDate(c.eta)}
                       </td>
                       <td
                         style={{

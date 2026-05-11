@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
     let query = supabase
       .from("shipments_v2")
-      .select("id, shipment_number, bol_number, status, created_at")
+      .select("id, shipment_number, bol_number, status, eta, created_at")
       .order("created_at", { ascending: false });
 
     if (statusFilter === "active") {

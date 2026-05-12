@@ -60,34 +60,46 @@ export async function loadDropshipSources(
 
   const productId = product.id as string;
 
-  // 2) Load containers with status 'received' that contain this product
-  // We traverse via shipment_items -> purchase_order_lines to get product_id
-  const { data: containerItems, error: containersError } = await supabase
-    .from("shipment_items")
-    .select(
-      `shipment_container_id,
-       shipment_containers!inner(id, status, container_number),
-       purchase_order_lines!inner(product_id)`,
-    )
-    .eq("shipment_containers.status", "received")
-    .eq("purchase_order_lines.product_id", productId);
+  // 2) Load containers with status 'Delivered' that contain this product
+  // Step 1: find container_ids from container_items_v2 by sku_id
+  const { data: containerItemRows, error: containerItemsError } = await supabase
+    .from("container_items_v2")
+    .select("container_id")
+    .eq("sku_id", productId);
 
-  if (containersError) {
-    console.error("Error loading containers for dropship transfer", containersError);
+  if (containerItemsError) {
+    console.error("Error loading containers for dropship transfer (container_items_v2)", containerItemsError);
   }
 
-  const containersMap = new Map<string, { id: string; container_number: string }>();
-  for (const row of (containerItems || []) as any[]) {
-    const c = row.shipment_containers as any;
-    if (!c || !c.id) continue;
-    const id = c.id as string;
-    const containerNumber = (c.container_number as string) || id;
-    if (!containersMap.has(id)) {
-      containersMap.set(id, { id, container_number: containerNumber });
+  const containerIdSet = new Set<string>();
+  for (const row of (containerItemRows || []) as any[]) {
+    const cid = row.container_id as string | null | undefined;
+    if (cid) {
+      containerIdSet.add(cid);
     }
   }
 
-  const containers = Array.from(containersMap.values());
+  let containers: { id: string; container_number: string }[] = [];
+
+  if (containerIdSet.size > 0) {
+    const containerIds = Array.from(containerIdSet.values());
+
+    // Step 2: load containers_v2 rows for those IDs with status = 'Delivered'
+    const { data: containerRows, error: containersError } = await supabase
+      .from("containers_v2")
+      .select("id, container_number, status")
+      .in("id", containerIds)
+      .eq("status", "Delivered");
+
+    if (containersError) {
+      console.error("Error loading containers for dropship transfer (containers_v2)", containersError);
+    } else {
+      containers = (containerRows || []).map((c: any) => ({
+        id: c.id as string,
+        container_number: (c.container_number as string) || (c.id as string),
+      }));
+    }
+  }
 
   // 3) Load shipments in processing that include this product
   const { data: shipmentsRaw, error: shipmentsError } = await supabase

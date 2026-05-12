@@ -35,10 +35,17 @@ function formatDate(value: string | null): string {
   return d.toLocaleDateString();
 }
 
+function getDisplayStatus(c: InboundContainerRow): string {
+  const shipmentStatus = (c.shipment_status || "").trim();
+  return ["Draft", "Booked", "In Transit"].includes(shipmentStatus)
+    ? shipmentStatus
+    : c.status || "Draft";
+}
+
 export default function InboundContainersPage() {
   const router = useRouter();
   const [rows, setRows] = useState<InboundContainerRow[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("Draft");
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [search, setSearch] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
@@ -54,7 +61,7 @@ export default function InboundContainersPage() {
   useEffect(() => {
     const fetchStatusOptions = async () => {
       try {
-        const res = await fetch("/api/inbound-containers/list");
+        const res = await fetch("/api/inbound-containers/list?status=all");
         const data = await res.json();
         if (!res.ok) {
           console.error("Error loading inbound container statuses", data);
@@ -64,8 +71,8 @@ export default function InboundContainersPage() {
         const unique = Array.from(
           new Set(
             containers
-              .map((c) => (c.status || "").trim())
-              .filter((s) => s.length > 0),
+              .map((c) => getDisplayStatus(c))
+              .filter((s) => s && s.trim().length > 0),
           ),
         );
         setStatusOptions(unique);
@@ -86,7 +93,8 @@ export default function InboundContainersPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (statusFilter) params.set("status", statusFilter);
+        // Always load all statuses; filtering is done client-side using display status
+        params.set("status", "all");
         if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
 
         const res = await fetch(`/api/inbound-containers/list?${params.toString()}`);
@@ -106,7 +114,7 @@ export default function InboundContainersPage() {
     };
 
     fetchData();
-  }, [statusFilter, debouncedSearch]);
+  }, [debouncedSearch]);
 
   return (
     <div style={{ background: "#f9fafb", minHeight: "100vh", padding: 20, fontSize: 12 }}>
@@ -136,7 +144,7 @@ export default function InboundContainersPage() {
             ))}
           </select>
         </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
           <label style={{ fontSize: 12, color: "#555", display: "block", marginBottom: 2 }}>
             Search
           </label>
@@ -144,7 +152,16 @@ export default function InboundContainersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Container # or BOL"
-            style={{ padding: 4, fontSize: 12, width: "100%" }}
+            style={{
+              padding: "4px 8px",
+              fontSize: 12,
+              width: "100%",
+              border: "1px solid #d1d5db", // slate-300
+              borderRadius: 4,
+              backgroundColor: "#ffffff",
+              height: 26,
+              boxSizing: "border-box",
+            }}
           />
         </div>
       </div>
@@ -200,6 +217,10 @@ export default function InboundContainersPage() {
             )}
             {!loading &&
               [...rows]
+                .filter((c) => {
+                  if (statusFilter === "all") return true;
+                  return getDisplayStatus(c) === statusFilter;
+                })
                 .sort((a, b) => {
                   // Handle null or invalid ETA values: send them to the bottom
                   if (!a.eta && !b.eta) return 0;
@@ -241,13 +262,7 @@ export default function InboundContainersPage() {
                         {c.bol_number || "\u2014"}
                       </td>
                       <td style={{ padding: "6px 8px", borderBottom: "1px solid #f3f4f6" }}>
-                        {(() => {
-                          const shipmentStatus = (c.shipment_status || "").trim();
-                          const displayStatus = ["Draft", "Booked", "In Transit"].includes(shipmentStatus)
-                            ? shipmentStatus
-                            : c.status || "Draft";
-                          return displayStatus;
-                        })()}
+                        {getDisplayStatus(c)}
                       </td>
                       <td style={{ padding: "6px 8px", borderBottom: "1px solid #f3f4f6" }}>
                         {formatDate(c.eta)}

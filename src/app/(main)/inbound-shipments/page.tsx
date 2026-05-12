@@ -30,6 +30,7 @@ export default function InboundShipmentsPage() {
   const [shipments, setShipments] = useState<ShipmentRow[]>([]);
   const [statusFilter, setStatusFilter] = useState("Draft");
   const [statuses, setStatuses] = useState<string[]>([]);
+  const [bolSearch, setBolSearch] = useState("");
 
   useEffect(() => {
     fetch(`/api/shipments-v2/list?status=${statusFilter}`)
@@ -50,24 +51,60 @@ export default function InboundShipmentsPage() {
       });
   }, [statusFilter]);
 
+  const normalizedSearch = bolSearch.trim().toLowerCase();
+  const filteredShipments = normalizedSearch
+    ? shipments.filter((s) => {
+        const bol = (s.bol_number || "").toString().toLowerCase();
+        return bol.includes(normalizedSearch);
+      })
+    : shipments;
+
   return (
     <div style={{ padding: 16, fontSize: 12 }}>
       <h2 style={{ fontWeight: 600, fontSize: 18, marginBottom: 12 }}>Inbound Shipments</h2>
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ marginRight: 4 }}>Status:</label>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ padding: "2px 4px", fontSize: 12 }}
-        >
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          {statuses.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+      <div
+        style={{
+          marginBottom: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <label style={{ marginRight: 4 }}>Status:</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ padding: "2px 4px", fontSize: 12 }}
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <input
+            type="text"
+            value={bolSearch}
+            onChange={(e) => setBolSearch(e.target.value)}
+            placeholder="Search by BOL"
+            style={{
+              padding: "4px 8px",
+              fontSize: 12,
+              minWidth: 200,
+              border: "1px solid #d1d5db", // slate-300
+              borderRadius: 4,
+              backgroundColor: "#ffffff",
+              height: 26,
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -81,7 +118,7 @@ export default function InboundShipmentsPage() {
           </tr>
         </thead>
         <tbody>
-          {shipments.map((s) => (
+          {filteredShipments.map((s) => (
             <tr key={s.id}>
               <td style={{ padding: "4px 6px", borderBottom: "1px solid #f0f0f0" }}>
                 {s.bol_number ? `BOL: ${s.bol_number}` : s.shipment_number}
@@ -106,7 +143,7 @@ export default function InboundShipmentsPage() {
               </td>
             </tr>
           ))}
-          {shipments.length === 0 && (
+          {filteredShipments.length === 0 && (
             <tr>
               <td colSpan={5} style={{ padding: "4px 6px", color: "#777", fontStyle: "italic" }}>
                 No shipments found

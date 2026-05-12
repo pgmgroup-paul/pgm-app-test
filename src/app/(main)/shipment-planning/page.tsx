@@ -46,8 +46,8 @@ export default function ShipmentPlanningPage() {
         return;
       }
 
-      // Temporary redirect back to the same page
-      window.location.href = "/shipment-planning";
+      // Redirect to inbound shipments after successful creation
+      window.location.href = "/inbound-shipments";
     } catch (err) {
       console.error("Unexpected error creating shipment", err);
       alert("Unexpected error creating shipment");

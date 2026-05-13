@@ -140,7 +140,7 @@ export const sidebarItems: NavGroup[] = [
         icon: Images,
         subItems: [
           { title: "Add Product", url: "/products/new", icon: CirclePlus },
-          { title: "Update Product", url: "/products/update", icon: BookOpenCheck },
+          { title: "View & Edit Product", url: "/products", icon: BookOpenCheck },
         ],
       },
       {
@@ -241,6 +241,11 @@ export const sidebarItems: NavGroup[] = [
     id: 6,
     label: "Sales",
     items: [
+      {
+        title: "Inventory Availability",
+        url: "/sales-shipments/availability",
+        icon: CirclePile,
+      },
       {
         title: "Sales orders",
         url: "/sales-orders",

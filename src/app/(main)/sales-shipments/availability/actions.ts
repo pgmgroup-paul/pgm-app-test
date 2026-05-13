@@ -3,7 +3,7 @@
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
 
-export interface DemandState {
+export interface AvailabilityState {
   ok: boolean | null;
   error?: string;
   productName?: string;
@@ -13,7 +13,9 @@ export interface DemandState {
   imageUrl?: string | null;
   quantityInStock?: number;
   quantityInSOs?: number;
+  incomingUnits?: number;
   balance?: number;
+  availableInclIncoming?: number;
   orders?: {
     so_number: string;
     customer_name: string | null;
@@ -23,7 +25,10 @@ export interface DemandState {
   }[];
 }
 
-export async function loadDemand(_prev: DemandState, formData: FormData): Promise<DemandState> {
+export async function loadAvailability(
+  _prev: AvailabilityState,
+  formData: FormData,
+): Promise<AvailabilityState> {
   const profile = await getCurrentUserProfile();
 
   if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
@@ -47,13 +52,15 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
   if (skuVarRaw) {
     productQuery = productQuery.eq("sku_var", skuVarRaw);
   } else {
+    // Prefer the base product (no variant) when variant is blank.
+    // This avoids accidentally matching "2pack", "4pack", etc.
     productQuery = productQuery.or("sku_var.is.null,sku_var.eq.");
   }
 
   const { data: product, error: prodError } = await productQuery.maybeSingle();
 
   if (prodError || !product) {
-    console.error("Error resolving product for demand", prodError, { skuRaw, skuVarRaw });
+    console.error("Error resolving product for availability", prodError, { skuRaw, skuVarRaw });
     return {
       ok: false,
       error: `Product not found for that SKU / variant (received SKU='${skuRaw}' variant='${skuVarRaw || ""}')`,
@@ -69,17 +76,18 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
     .eq("product_id", productId);
 
   if (locError) {
-    console.error("Error loading inventory_location for demand", locError);
+    console.error("Error loading inventory_location for availability", locError);
   }
 
   // Load units_per for this product
   const { data: dimsRows, error: dimsError } = await supabase
     .from("product_dimensions")
-    .select("product_id, units_per")
-    .eq("product_id", productId);
+    .select("product_id, kind, units_per")
+    .eq("product_id", productId)
+    .eq("kind", "package");
 
   if (dimsError) {
-    console.error("Error loading product_dimensions for demand", dimsError);
+    console.error("Error loading product_dimensions for availability", dimsError);
   }
 
   let unitsPer = 0;
@@ -95,7 +103,54 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
     quantityInStock += cases * unitsPer;
   }
 
-  // 3) Quantity in SOs and list of orders
+  // 3) Incoming from containers_v2/container_items_v2 (no partials, no movements)
+  let incomingUnits = 0;
+
+  const { data: inboundItems, error: inboundItemsError } = await supabase
+    .from("container_items_v2")
+    .select("container_id, sku_id, quantity, units_per")
+    .eq("sku_id", productId);
+
+  if (inboundItemsError) {
+    console.error("Error loading container_items_v2 for availability incoming", inboundItemsError);
+  }
+
+  const containerIds = Array.from(
+    new Set((inboundItems || []).map((it: any) => (it.container_id as string) || "").filter(Boolean)),
+  );
+
+  let activeContainerIdSet = new Set<string>();
+
+  if (containerIds.length > 0) {
+    const { data: containers, error: containersError } = await supabase
+      .from("containers_v2")
+      .select("id, status")
+      .in("id", containerIds)
+      .not("status", "in", "(Canceled,Unloaded)");
+
+    if (containersError) {
+      console.error("Error loading containers_v2 for availability incoming", containersError);
+    } else {
+      for (const c of containers || []) {
+        const status = ((c as any).status || "").toString();
+        if (status !== "Canceled" && status !== "Unloaded") {
+          activeContainerIdSet.add((c as any).id as string);
+        }
+      }
+    }
+  }
+
+  for (const row of inboundItems || []) {
+    const r = row as any;
+    const cid = (r.container_id as string) || "";
+    if (!cid || !activeContainerIdSet.has(cid)) continue;
+    const qty = Number(r.quantity) || 0;
+    const u = Number(r.units_per) || 0;
+    if (qty <= 0 || u <= 0) continue;
+    incomingUnits += qty * u;
+  }
+
+  // 4) Quantity in SOs and list of orders (committed)
   // Step 1: load all sales_order_lines for this product
   const { data: soLinesRaw, error: soLinesError } = await supabase
     .from("sales_order_lines")
@@ -103,13 +158,13 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
     .eq("product_id", productId);
 
   if (soLinesError) {
-    console.error("Error loading sales_order_lines for demand", soLinesError);
+    console.error("Error loading sales_order_lines for availability", soLinesError);
   }
 
   let quantityInSOs = 0;
-  const orders: DemandState["orders"] = [];
+  const orders: AvailabilityState["orders"] = [];
 
-  console.log("DEMAND_DEBUG_LINES", { productId, soLinesRaw });
+  console.log("AVAILABILITY_DEBUG_LINES", { productId, soLinesRaw });
 
   const soIds = Array.from(
     new Set((soLinesRaw || []).map((r: any) => (r.sales_order_id as string) || "").filter(Boolean)),
@@ -124,17 +179,16 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
       .in("status", ["open", "processing"]);
 
     if (soError) {
-      console.error("Error loading sales_orders for demand", soError);
+      console.error("Error loading sales_orders for availability", soError);
     }
 
-    console.log("DEMAND_DEBUG_ORDERS", { soIds, soRows });
+    console.log("AVAILABILITY_DEBUG_ORDERS", { soIds, soRows });
 
     const soMap = new Map<string, any>();
     for (const so of soRows || []) {
       soMap.set(so.id as string, so);
     }
 
-    // Optional: load customers in a second step
     const customerMap = new Map<string, string | null>();
     for (const so of soRows || []) {
       customerMap.set(so.id as string, ((so as any).customer_name as string) || null);
@@ -177,7 +231,8 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
     return aTime - bTime;
   });
 
-  const balance = quantityInStock - quantityInSOs;
+  const balance = quantityInStock - quantityInSOs; // Available now
+  const availableInclIncoming = quantityInStock + incomingUnits - quantityInSOs;
 
   return {
     ok: true,
@@ -188,7 +243,9 @@ export async function loadDemand(_prev: DemandState, formData: FormData): Promis
     imageUrl: (product.image as string) || null,
     quantityInStock,
     quantityInSOs,
+    incomingUnits,
     balance,
+    availableInclIncoming,
     orders,
   };
 }

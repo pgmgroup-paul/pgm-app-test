@@ -12,14 +12,13 @@ export function DropshipTransferShell() {
 
   const [saveState, saveAction] = useActionState<DropshipSaveState, FormData>(saveDropshipTransfer, { ok: null });
 
-  const [sourceType, setSourceType] = useState<"container" | "order_leftover" | "inventory">("container");
+  const [sourceType, setSourceType] = useState<"container" | "order_leftover">("container");
   const [selectedContainerId, setSelectedContainerId] = useState<string | undefined>(undefined);
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | undefined>(undefined);
 
   const quantityRef = useRef<HTMLInputElement | null>(null);
 
   const hasSelection =
-    sourceType === "inventory" ||
     (sourceType === "container" && !!selectedContainerId) ||
     (sourceType === "order_leftover" && !!selectedShipmentId);
 
@@ -98,14 +97,11 @@ export function DropshipTransferShell() {
             >
               <option value="container">Container</option>
               <option value="order_leftover">Order leftover</option>
-              <option value="inventory">Inventory</option>
             </select>
             <p className="text-[10px] text-muted-foreground">
               {sourceType === "container" && "Log transfer from a received container into the dropship area."}
               {sourceType === "order_leftover" &&
                 "Log leftover units from a processing shipment into the dropship area."}
-              {sourceType === "inventory" &&
-                "Log a manual transfer from existing warehouse inventory into the dropship area."}
             </p>
           </div>
 

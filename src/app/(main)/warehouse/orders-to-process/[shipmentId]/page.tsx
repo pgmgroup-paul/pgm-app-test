@@ -232,14 +232,34 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
   const rows = await loadShipmentProducts(shipmentId, orderNumber);
 
   const totalItems = rows.length;
-  const pickedItems = rows.reduce((acc, row: any) => {
-    const qtyUnits = Number(row.quantity_shipped_units) || 0;
-    const unitsPerCase = Number((row as any).units_per_case) || 0;
-    const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
-    const casesPicked = Number((row as any).cases_picked) || 0;
-    const casesRemaining = Math.max(casesRequired - casesPicked, 0);
-    return acc + (casesRemaining <= 0 ? 1 : 0);
-  }, 0);
+  const summary = rows.reduce(
+    (acc, row: any) => {
+      const qtyUnits = Number(row.quantity_shipped_units) || 0;
+      const unitsPerCase = Number((row as any).units_per_case) || 0;
+      const hasValidUnitsPerCase = unitsPerCase > 0;
+
+      if (!hasValidUnitsPerCase) {
+        acc.invalidItems += 1;
+        return acc;
+      }
+
+      const casesRequired = Math.ceil(qtyUnits / unitsPerCase);
+      const casesPicked = Number((row as any).cases_picked) || 0;
+      const casesRemaining = Math.max(casesRequired - casesPicked, 0);
+
+      acc.totalValidItems += 1;
+      if (casesRemaining <= 0) {
+        acc.pickedItems += 1;
+      }
+
+      return acc;
+    },
+    { pickedItems: 0, totalValidItems: 0, invalidItems: 0 },
+  );
+
+  const pickedItems = summary.pickedItems;
+  const totalValidItems = summary.totalValidItems;
+  const invalidItems = summary.invalidItems;
 
   return (
     <div className="space-y-2 rounded-md border px-3 py-3 text-xs">
@@ -247,11 +267,18 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
 
       {/* Picking progress */}
       {totalItems > 0 && (
-        <div className="mb-1 text-[11px]">
-          <span className="font-medium">Progress</span>{" "}
-          <span>
-            {pickedItems} / {totalItems} items picked
-          </span>
+        <div className="mb-1 space-y-0.5 text-[11px]">
+          <div>
+            <span className="font-medium">Progress</span>{" "}
+            <span>
+              {pickedItems} / {totalValidItems} items picked
+            </span>
+          </div>
+          {invalidItems > 0 && (
+            <div className="text-[10px] text-amber-700">
+              {invalidItems} item{invalidItems > 1 ? "s" : ""} have missing case configuration and cannot be picked.
+            </div>
+          )}
         </div>
       )}
 
@@ -280,16 +307,20 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                   const productName = (p?.product_name as string) || "";
                   const qtyUnits = Number(row.quantity_shipped_units) || 0;
                   const unitsPerCase = Number((row as any).units_per_case) || 0;
-                  const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
-                  const fullCases = unitsPerCase > 0 ? Math.floor(qtyUnits / unitsPerCase) : 0;
-                  const remainingPieces = unitsPerCase > 0 ? qtyUnits % unitsPerCase : 0;
-                  const hasBreakCase = unitsPerCase > 0 && remainingPieces > 0;
+                  const hasValidUnitsPerCase = unitsPerCase > 0;
+                  const casesRequired = hasValidUnitsPerCase ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+                  const fullCases = hasValidUnitsPerCase ? Math.floor(qtyUnits / unitsPerCase) : 0;
+                  const remainingPieces = hasValidUnitsPerCase ? qtyUnits % unitsPerCase : qtyUnits;
+                  const hasBreakCase = hasValidUnitsPerCase && remainingPieces > 0;
                   const casesPicked = Number((row as any).cases_picked) || 0;
-                  const casesRemaining = Math.max(casesRequired - casesPicked, 0);
+                  const casesRemaining = hasValidUnitsPerCase
+                    ? Math.max(casesRequired - casesPicked, 0)
+                    : 0;
                   const locations: { location_code: string; quantity: number; available_cases: number }[] =
                     (row.locations as any[]) || [];
 
-                  const canPickMore = casesRemaining > 0;
+                  const canPickMore = hasValidUnitsPerCase && casesRemaining > 0;
+                  const completed = hasValidUnitsPerCase && !canPickMore;
 
                   return (
                     <React.Fragment key={row.id as string}>
@@ -305,20 +336,33 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                               ⚠ Break case
                             </span>
                           )}
+                          {!hasValidUnitsPerCase && (
+                            <span className="ml-1 rounded-sm bg-red-50 px-1 text-[10px] font-medium text-red-700 align-middle">
+                              Missing case configuration
+                            </span>
+                          )}
                         </td>
                         <td className="px-2 py-1 text-right text-[11px]">{qtyUnits}</td>
                         <td className="px-2 py-1 text-right text-[11px]">{casesRequired}</td>
                         <td className="px-2 py-1 text-right text-[10px] text-muted-foreground whitespace-nowrap">
-                          {unitsPerCase > 0 && fullCases > 0 && remainingPieces > 0 && (
+                          {hasValidUnitsPerCase ? (
                             <>
-                              {fullCases} cs + {remainingPieces} pcs
+                              {unitsPerCase > 0 && fullCases > 0 && remainingPieces > 0 && (
+                                <>
+                                  {fullCases} cs + {remainingPieces} pcs
+                                </>
+                              )}
+                              {unitsPerCase > 0 && fullCases > 0 && remainingPieces === 0 && <>{fullCases} cs</>}
+                              {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces > 0 && <>{remainingPieces} pcs</>}
+                              {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces === 0 && <>-</>}
                             </>
+                          ) : (
+                            <span>-</span>
                           )}
-                          {unitsPerCase > 0 && fullCases > 0 && remainingPieces === 0 && <>{fullCases} cs</>}
-                          {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces > 0 && <>{remainingPieces} pcs</>}
-                          {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces === 0 && <>-</>}
                         </td>
-                        <td className="px-2 py-1 text-right text-[12px] font-semibold">{casesRemaining}</td>
+                        <td className="px-2 py-1 text-right text-[12px] font-semibold">
+                          {hasValidUnitsPerCase ? casesRemaining : "-"}
+                        </td>
                       </tr>
 
                       {locations.map((loc, idx) => (
@@ -327,17 +371,24 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                           className="border-b last:border-none"
                         >
                           <td className="py-1 pr-2 pl-6 font-mono text-[11px] text-muted-foreground">
-                            {canPickMore ? (
-                              <a
-                                href={`/warehouse/deduct?product_id=${encodeURIComponent(row.product_id as string)}&shipment_id=${encodeURIComponent(shipmentId)}&location=${encodeURIComponent(loc.location_code)}&reason=order`}
-                                className="text-primary hover:underline"
-                              >
-                                {loc.location_code}
-                              </a>
+                            {hasValidUnitsPerCase ? (
+                              canPickMore ? (
+                                <a
+                                  href={`/warehouse/deduct?product_id=${encodeURIComponent(row.product_id as string)}&shipment_id=${encodeURIComponent(shipmentId)}&location=${encodeURIComponent(loc.location_code)}&reason=order`}
+                                  className="text-primary hover:underline"
+                                >
+                                  {loc.location_code}
+                                </a>
+                              ) : (
+                                <span className="cursor-default text-muted-foreground">
+                                  {loc.location_code}
+                                  <span className="ml-1 align-middle text-[10px]">(Fully picked)</span>
+                                </span>
+                              )
                             ) : (
                               <span className="cursor-default text-muted-foreground">
                                 {loc.location_code}
-                                <span className="ml-1 align-middle text-[10px]">(Fully picked)</span>
+                                <span className="ml-1 align-middle text-[10px]">(Missing case configuration)</span>
                               </span>
                             )}
                           </td>
@@ -363,17 +414,20 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
               const productName = (p?.product_name as string) || "";
               const qtyUnits = Number(row.quantity_shipped_units) || 0;
               const unitsPerCase = Number((row as any).units_per_case) || 0;
-              const casesRequired = unitsPerCase > 0 ? Math.ceil(qtyUnits / unitsPerCase) : 0;
-              const fullCases = unitsPerCase > 0 ? Math.floor(qtyUnits / unitsPerCase) : 0;
-              const remainingPieces = unitsPerCase > 0 ? qtyUnits % unitsPerCase : 0;
-              const hasBreakCase = unitsPerCase > 0 && remainingPieces > 0;
+              const hasValidUnitsPerCase = unitsPerCase > 0;
+              const casesRequired = hasValidUnitsPerCase ? Math.ceil(qtyUnits / unitsPerCase) : 0;
+              const fullCases = hasValidUnitsPerCase ? Math.floor(qtyUnits / unitsPerCase) : 0;
+              const remainingPieces = hasValidUnitsPerCase ? qtyUnits % unitsPerCase : qtyUnits;
+              const hasBreakCase = hasValidUnitsPerCase && remainingPieces > 0;
               const casesPicked = Number((row as any).cases_picked) || 0;
-              const casesRemaining = Math.max(casesRequired - casesPicked, 0);
+              const casesRemaining = hasValidUnitsPerCase
+                ? Math.max(casesRequired - casesPicked, 0)
+                : 0;
               const locations: { location_code: string; quantity: number; available_cases: number }[] =
                 (row.locations as any[]) || [];
 
-              const canPickMore = casesRemaining > 0;
-              const completed = !canPickMore;
+              const canPickMore = hasValidUnitsPerCase && casesRemaining > 0;
+              const completed = hasValidUnitsPerCase && !canPickMore;
 
               return locations.map((loc, idx) => {
                 const lowStock = loc.available_cases < casesRemaining;
@@ -394,17 +448,28 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                           ⚠ Break case
                         </span>
                       )}
+                      {!hasValidUnitsPerCase && (
+                        <span className="ml-1 rounded-sm bg-red-50 px-1 text-[10px] font-medium text-red-700 align-middle">
+                          Missing case configuration
+                        </span>
+                      )}
                     </div>
                     <div className="mt-0.5 text-[10px] text-muted-foreground whitespace-nowrap">
                       Order:{" "}
-                      {unitsPerCase > 0 && fullCases > 0 && remainingPieces > 0 && (
+                      {hasValidUnitsPerCase ? (
                         <>
-                          {fullCases} cs + {remainingPieces} pcs
+                          {unitsPerCase > 0 && fullCases > 0 && remainingPieces > 0 && (
+                            <>
+                              {fullCases} cs + {remainingPieces} pcs
+                            </>
+                          )}
+                          {unitsPerCase > 0 && fullCases > 0 && remainingPieces === 0 && <>{fullCases} cs</>}
+                          {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces > 0 && <>{remainingPieces} pcs</>}
+                          {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces === 0 && <>-</>}
                         </>
+                      ) : (
+                        <span>-</span>
                       )}
-                      {unitsPerCase > 0 && fullCases > 0 && remainingPieces === 0 && <>{fullCases} cs</>}
-                      {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces > 0 && <>{remainingPieces} pcs</>}
-                      {(unitsPerCase <= 0 || fullCases === 0) && remainingPieces === 0 && <>-</>}
                     </div>
                     <div className="mt-0.5 text-[11px]">
                       Location: <span className="font-mono">{loc.location_code}</span>
@@ -415,22 +480,30 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
                       {lowStock && <span className="ml-1 align-middle text-[10px] text-red-600">(Low stock)</span>}
                     </div>
                     <div className="mt-0.5 text-[12px] font-semibold">
-                      Cases remaining: {casesRemaining} {completed && <span className="text-emerald-600">✓</span>}
+                      Cases remaining: {hasValidUnitsPerCase ? casesRemaining : "-"} {completed && (
+                        <span className="text-emerald-600">✓</span>
+                      )}
                     </div>
 
-                    {canPickMore ? (
-                      <a
-                        href={`/warehouse/deduct?product_id=${encodeURIComponent(
-                          row.product_id as string,
-                        )}&shipment_id=${encodeURIComponent(
-                          shipmentId,
-                        )}&location=${encodeURIComponent(loc.location_code)}&reason=order`}
-                        className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
-                      >
-                        Pick from this location
-                      </a>
+                    {hasValidUnitsPerCase ? (
+                      canPickMore ? (
+                        <a
+                          href={`/warehouse/deduct?product_id=${encodeURIComponent(
+                            row.product_id as string,
+                          )}&shipment_id=${encodeURIComponent(
+                            shipmentId,
+                          )}&location=${encodeURIComponent(loc.location_code)}&reason=order`}
+                          className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-1.5 font-medium text-[11px] text-primary-foreground hover:bg-primary/90"
+                        >
+                          Pick from this location
+                        </a>
+                      ) : (
+                        <div className="mt-2 text-center text-[11px] text-muted-foreground">✓ Picked</div>
+                      )
                     ) : (
-                      <div className="mt-2 text-center text-[11px] text-muted-foreground">✓ Picked</div>
+                      <div className="mt-2 text-center text-[11px] text-amber-700">
+                        Cannot pick: Missing case configuration
+                      </div>
                     )}
                   </div>
                 );
@@ -443,7 +516,7 @@ async function ShipmentProductsTable({ shipmentId, orderNumber }: { shipmentId: 
             <input type="hidden" name="shipment_id" value={shipmentId} />
             <button
               type="submit"
-              disabled={pickedItems < totalItems}
+              disabled={invalidItems > 0 || pickedItems < totalValidItems}
               className={`inline-flex items-center rounded-md px-3 py-1.5 font-medium text-[11px] transition-colors ${
                 pickedItems < totalItems
                   ? "cursor-not-allowed bg-muted text-muted-foreground"

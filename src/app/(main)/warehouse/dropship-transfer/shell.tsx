@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 
+import { FuzzyProductSearch } from "../../sales-shipments/FuzzyProductSearch";
 import { type DropshipSaveState, saveDropshipTransfer } from "./save-transfer";
 import { type DropshipSourcesState, loadDropshipSources } from "./sources-load";
 
@@ -32,6 +33,7 @@ export function DropshipTransferShell() {
     <div className="space-y-4">
       {/* SKU lookup */}
       <form action={formAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
+        <FuzzyProductSearch />
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU

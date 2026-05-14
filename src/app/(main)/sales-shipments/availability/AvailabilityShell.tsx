@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import type { AvailabilityState } from "./actions";
+import { FuzzyProductSearch } from "../FuzzyProductSearch";
 
 interface AvailabilityShellProps {
   loadAvailability: (prev: AvailabilityState, formData: FormData) => Promise<AvailabilityState>;
@@ -31,6 +32,9 @@ export function AvailabilityShell({
 
       {/* Product lookup */}
       <form action={formAction} className="space-y-4 rounded-md border px-3 py-3 text-xs">
+        {/* Fuzzy helper */}
+        <FuzzyProductSearch />
+
         <div className="space-y-2">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import type { DemandState } from "./actions";
+import { FuzzyProductSearch } from "../FuzzyProductSearch";
 
 interface DemandShellProps {
   loadDemand: (prev: DemandState, formData: FormData) => Promise<DemandState>;
@@ -26,6 +27,8 @@ export function DemandShell({ loadDemand, initialState, initialSku, initialVar }
 
       {/* Product lookup */}
       <form action={formAction} className="space-y-4 rounded-md border px-3 py-3 text-xs">
+        <FuzzyProductSearch />
+
         <div className="space-y-2">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">

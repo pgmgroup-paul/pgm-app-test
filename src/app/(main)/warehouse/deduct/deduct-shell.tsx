@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 
+import { FuzzyProductSearch } from "../../sales-shipments/FuzzyProductSearch";
 import { type DeductMoveState, handleDeductMove } from "./deduct-move";
 import { handleUndoDeduct, type UndoDeductState } from "./deduct-undo";
 import { type DeductLocationState, loadDeductLocations } from "./locations-load";
@@ -123,6 +124,7 @@ export function DeductShell({
     <div className="space-y-4">
       <form action={formAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
         <input type="hidden" name="shipment_id" value={shipmentId || ""} />
+        <FuzzyProductSearch />
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU

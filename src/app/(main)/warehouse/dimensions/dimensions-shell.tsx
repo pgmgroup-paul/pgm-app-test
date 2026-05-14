@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 
+import { FuzzyProductSearch } from "../../sales-shipments/FuzzyProductSearch";
 import { type DimensionsState, loadDimensions } from "./dimensions-load";
 import { type SaveDimensionsState, saveDimensions } from "./dimensions-save";
 
@@ -58,6 +59,7 @@ export function DimensionsShell({ initialSku, initialVariant, from }: Dimensions
     <div className="space-y-4">
       {/* SKU lookup */}
       <form action={loadAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
+        <FuzzyProductSearch />
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU

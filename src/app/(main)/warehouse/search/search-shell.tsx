@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 
+import { FuzzyProductSearch } from "../../sales-shipments/FuzzyProductSearch";
 import { loadSearchByLocation, type SearchLocationState } from "./search-location-load";
 import { loadSearchBySku, type SearchSkuState } from "./search-sku-load";
 
@@ -57,6 +58,7 @@ export function WarehouseSearchShell() {
       {activeTab === "sku" && (
         <div className="space-y-3">
           <form ref={skuFormRef} action={skuAction} className="space-y-3 rounded-md border px-3 py-3 text-sm">
+            <FuzzyProductSearch />
             <div className="space-y-1 text-sm">
               <label htmlFor="sku" className="font-medium">
                 SKU

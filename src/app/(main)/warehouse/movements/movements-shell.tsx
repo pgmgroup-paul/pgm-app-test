@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { FuzzyProductSearch } from "../../sales-shipments/FuzzyProductSearch";
 import { loadMovementsBySku, type MovementRow, type MovementsState } from "./movements-load";
 import { loadRecentMovements, type RecentMovementsState } from "./load-recent";
 
@@ -78,6 +79,7 @@ export function MovementsShell({ initialRecentState }: { initialRecentState: Rec
             action={action}
             className={`space-y-3 rounded-md border px-3 py-3 text-sm ${showFilters ? "" : "hidden md:block"}`}
           >
+        <FuzzyProductSearch />
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU

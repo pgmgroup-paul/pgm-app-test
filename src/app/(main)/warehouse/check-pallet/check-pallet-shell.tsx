@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 
+import { FuzzyProductSearch } from "../../sales-shipments/FuzzyProductSearch";
 import { type CheckPalletState, loadPalletConfig } from "./check-pallet-load";
 
 export function CheckPalletShell() {
@@ -47,6 +48,7 @@ export function CheckPalletShell() {
     <div className="space-y-4">
       {/* SKU lookup */}
       <form ref={formRef} action={action} className="space-y-3 rounded-md border px-3 py-3 text-sm">
+        <FuzzyProductSearch />
         <div className="space-y-1 text-sm">
           <label htmlFor="sku" className="font-medium">
             SKU

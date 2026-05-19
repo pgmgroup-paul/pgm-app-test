@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
+import { logActivity } from "@/lib/activity/log-activity";
 
 export interface ContainerReceiveState {
   ok: boolean | null;
@@ -30,6 +31,21 @@ export async function markContainerReceived(
   const supabase = serverSupabase;
 
   try {
+    // Load previous container status before running the receive RPC
+    const { data: existingContainer, error: existingLoadError } = await supabase
+      .from("containers_v2")
+      .select("status")
+      .eq("id", containerId)
+      .maybeSingle();
+
+    const previousStatus = (((existingContainer as any)?.status || "") as string).trim();
+
+    console.log("RECEIVE_CONTAINER_BEFORE_RPC", {
+      containerId,
+      previousStatus,
+      existingLoadError,
+    });
+
     const { error: rpcError } = await supabase.rpc("receive_container_v2", {
       p_container_id: containerId,
       p_received_by: profile.id,
@@ -43,17 +59,82 @@ export async function markContainerReceived(
       };
     }
 
-    // After successful receive, check if this container belongs to a shipment and auto-complete if all are unloaded
+    // After successful receive, check resulting container status and log unload activity when appropriate
     const { data: containerRow, error: containerLoadError } = await supabase
+      .from("containers_v2")
+      .select("id, shipment_id, status, container_number")
+      .eq("id", containerId)
+      .maybeSingle();
+
+    console.log("RECEIVE_CONTAINER_AFTER_RPC", {
+      containerId,
+      status: (containerRow as any)?.status,
+      containerNumber: (containerRow as any)?.container_number,
+      containerLoadError,
+    });
+
+    if (!containerLoadError && containerRow) {
+      const resultingStatus = (((containerRow as any).status || "") as string).trim();
+      const wasUnloadedBefore = previousStatus === "Unloaded";
+      const isNowUnloaded = resultingStatus === "Unloaded";
+
+      console.log("RECEIVE_CONTAINER_UNLOAD_DECISION", {
+        previousStatus,
+        resultingStatus,
+        wasUnloadedBefore,
+        isNowUnloaded,
+      });
+
+      // Log unload activity only when transitioning into Unloaded
+      if (!wasUnloadedBefore && isNowUnloaded) {
+        try {
+          const containerNumber =
+            (((containerRow as any).container_number || "") as string).trim() || containerId;
+
+          const userName =
+            (profile.full_name as string | undefined) ||
+            (profile.email as string | undefined) ||
+            "Unknown User";
+
+          console.log("ATTEMPTING_CONTAINER_UNLOADED_ACTIVITY_LOG", {
+            userId: profile.id,
+            userName,
+            containerId,
+            containerNumber,
+          });
+
+          await logActivity({
+            supabase,
+            userId: profile.id as string,
+            userName,
+            eventType: "container_unloaded",
+            entityType: "container",
+            entityId: containerId,
+            entityLabel: containerNumber,
+            message: `unloaded Container ${containerNumber}`,
+          });
+
+          console.log("CONTAINER_UNLOADED_ACTIVITY_LOGGED");
+        } catch (activityErr) {
+          console.error(
+            "Failed to log container_unloaded activity (server receive flow)",
+            activityErr,
+          );
+        }
+      }
+    }
+
+    // After successful receive, check if this container belongs to a shipment and auto-complete if all are unloaded
+    const { data: shipmentContainerRow, error: containerLoadError2 } = await supabase
       .from("containers_v2")
       .select("id, shipment_id")
       .eq("id", containerId)
       .maybeSingle();
 
-    if (containerLoadError) {
-      console.error("Error loading container for shipment completion check", containerLoadError);
-    } else if (containerRow && (containerRow as any).shipment_id) {
-      const shipmentId = (containerRow as any).shipment_id as string;
+    if (containerLoadError2) {
+      console.error("Error loading container for shipment completion check", containerLoadError2);
+    } else if (shipmentContainerRow && (shipmentContainerRow as any).shipment_id) {
+      const shipmentId = (shipmentContainerRow as any).shipment_id as string;
 
       // Load all containers for this shipment
       const { data: shipmentContainers, error: shipmentContainersError } = await supabase

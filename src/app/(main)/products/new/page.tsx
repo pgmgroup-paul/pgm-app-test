@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
+import { logActivity } from "@/lib/activity/log-activity";
 
 import { ImageField } from "../image-field";
 import { UpcField } from "../upc-field";
@@ -91,18 +92,61 @@ async function createProduct(formData: FormData) {
     }
   }
 
-  const { error } = await serverSupabase.from("products").insert({
-    sku,
-    sku_var,
-    product_name: productName,
-    category,
-    upc,
-    image,
-  });
+  const { data: inserted, error } = await serverSupabase
+    .from("products")
+    .insert({
+      sku,
+      sku_var,
+      product_name: productName,
+      category,
+      upc,
+      image,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     console.error("Error creating product", error);
     redirect("/products/new?error=unknown");
+  }
+
+  console.log("PRODUCT_CREATED_INSERT_SUCCESS", {
+    productId: inserted.id,
+    sku,
+    sku_var,
+  });
+
+  // Build stable entity label from sku and optional variant
+  const entityLabel = sku_var && sku_var.trim() ? `${sku}-${sku_var.trim()}` : sku;
+
+  console.log("PRODUCT_CREATED_ENTITY_LABEL", { entityLabel });
+
+  // Log activity for successful product creation (non-blocking)
+  try {
+    const userName =
+      (current.full_name as string | undefined) ||
+      (current.email as string | undefined) ||
+      "Unknown User";
+
+    console.log("ATTEMPTING_PRODUCT_CREATED_ACTIVITY_LOG", {
+      userId: current.id,
+      userName,
+      productId: inserted.id,
+      entityLabel,
+    });
+
+    await logActivity({
+      supabase: serverSupabase,
+      userId: current.id as string,
+      userName,
+      eventType: "product_created",
+      entityType: "product",
+      entityId: inserted.id as string,
+      entityLabel,
+      message: `created Product ${entityLabel}`,
+    });
+  } catch (activityErr) {
+    console.error("Failed to log product_created activity", activityErr);
   }
 
   // On success, stay on the same page and indicate success via search params.

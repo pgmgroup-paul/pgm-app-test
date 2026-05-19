@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
+import { logActivity } from "@/lib/activity/log-activity";
 
 async function createUser(formData: FormData) {
   "use server";
@@ -45,6 +46,8 @@ async function createUser(formData: FormData) {
 
   const userId = authData.user.id;
 
+  console.log("USER_CREATED_AUTH_SUCCESS", { userId, email });
+
   // 2) Create the matching profiles row keyed by auth.users.id
   const { error: profileError } = await serverSupabase.from("profiles").upsert(
     {
@@ -59,8 +62,42 @@ async function createUser(formData: FormData) {
     { onConflict: "id" },
   );
 
+  const entityLabel = fullName || email;
+
   if (profileError) {
     console.error("Error creating user profile", profileError);
+  } else {
+    console.log("USER_CREATED_PROFILE_SUCCESS", { userId, entityLabel });
+
+    // Log user_created activity only after auth and profile succeed
+    try {
+      const userName =
+        (admin.full_name as string | undefined) ||
+        (admin.email as string | undefined) ||
+        "Unknown User";
+
+      console.log("ATTEMPTING_USER_CREATED_ACTIVITY_LOG", {
+        actorId: admin.id,
+        actorName: userName,
+        createdUserId: userId,
+        entityLabel,
+      });
+
+      await logActivity({
+        supabase: serverSupabase,
+        userId: admin.id as string,
+        userName,
+        eventType: "user_created",
+        entityType: "user",
+        entityId: userId,
+        entityLabel,
+        message: `created User ${entityLabel}`,
+      });
+
+      console.log("USER_CREATED_ACTIVITY_LOGGED");
+    } catch (activityErr) {
+      console.error("Failed to log user_created activity", activityErr);
+    }
   }
 
   redirect("/profiles");

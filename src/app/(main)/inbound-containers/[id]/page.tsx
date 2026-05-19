@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { saveContainerNumberAction } from "./actions";
 
 type InboundContainerDetail = {
   container_id: string;
@@ -360,23 +361,7 @@ export default function InboundContainerDetailPage() {
     }
   };
 
-  const saveContainerNumber = async () => {
-    if (!containerId) return;
-
-    const { error } = await supabase
-      .from("containers_v2")
-      .update({ container_number: containerNumberInput })
-      .eq("id", containerId);
-
-    if (error) {
-      console.error("Failed to update container number", error);
-    } else {
-      setDetail((prev) =>
-        prev ? { ...prev, container_number: containerNumberInput } : prev,
-      );
-      setIsEditingContainer(false);
-    }
-  };
+  // container number save is now handled by server action saveContainerNumberAction
 
   const loadContainer = async () => {
     if (!containerId) return;
@@ -777,8 +762,29 @@ export default function InboundContainerDetailPage() {
                   </button>
                 </>
               ) : (
-                <div className="flex items-center gap-2">
+                <form
+                  action={async (formData: FormData) => {
+                    await saveContainerNumberAction(formData);
+
+                    const newNumber = (formData.get("container_number") || "")
+                      .toString()
+                      .trim()
+                      .toUpperCase();
+
+                    setDetail((prev) =>
+                      prev ? { ...prev, container_number: newNumber } : prev,
+                    );
+                    setIsEditingContainer(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
                   <input
+                    type="hidden"
+                    name="container_id"
+                    value={detail.container_id}
+                  />
+                  <input
+                    name="container_number"
                     value={containerNumberInput}
                     onChange={(e) => setContainerNumberInput(e.target.value)}
                     className="rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
@@ -791,13 +797,12 @@ export default function InboundContainerDetailPage() {
                     Cancel
                   </button>
                   <button
-                    type="button"
-                    onClick={saveContainerNumber}
+                    type="submit"
                     className="rounded bg-sky-600 px-2 py-0.5 text-[11px] font-normal text-white hover:bg-sky-700"
                   >
                     Save
                   </button>
-                </div>
+                </form>
               )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-3 text-slate-600">

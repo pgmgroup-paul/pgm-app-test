@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
+import { logActivity } from "@/lib/activity/log-activity";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,9 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
           if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
             redirect("/unauthorized");
           }
+
+          const userId = profile.id as string;
+          const userName = (profile.full_name as string | undefined) || (profile.email as string | undefined) || "Unknown User";
 
           const customerName = (formData.get("customer_name") || "").toString().trim();
           const orderDateRaw = (formData.get("order_date") || "").toString().trim();
@@ -128,6 +132,18 @@ export default async function NewSalesOrderPage({ searchParams }: { searchParams
             console.error("Error creating sales order", error);
             redirect("/sales-orders/new?error=create-failed");
           }
+
+          // Log activity (non-blocking; errors are handled inside helper)
+          await logActivity({
+            supabase: serverSupabase,
+            userId,
+            userName,
+            eventType: "sales_order_created",
+            entityType: "sales_order",
+            entityId: data.id as string,
+            entityLabel: orderNumber,
+            message: `created Sales Order ${orderNumber}`,
+          });
 
           redirect(`/sales-orders/${data.id}/edit`);
         }}

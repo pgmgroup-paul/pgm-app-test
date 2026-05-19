@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { serverSupabase } from "@/lib/serverSupabase";
 import { getCurrentUserProfile } from "@/server/auth/current-user";
+import { logActivity } from "@/lib/activity/log-activity";
 
 export async function createPurchaseOrder(formData: FormData): Promise<void> {
   const profile = await getCurrentUserProfile();
@@ -161,6 +162,26 @@ export async function updatePurchaseOrder(formData: FormData): Promise<void> {
   if (error) {
     console.error("Error updating purchase order", error);
     redirect(`/purchase-orders/new-v2?id=${id}&error=update-failed`);
+  }
+
+  // Log initial PO creation activity only when moving from draft to open
+  if (currentStatus === "draft") {
+    const userId = profile.id as string;
+    const userName =
+      (profile.full_name as string | undefined) ||
+      (profile.email as string | undefined) ||
+      "Unknown User";
+
+    await logActivity({
+      supabase: serverSupabase,
+      userId,
+      userName,
+      eventType: "purchase_order_created",
+      entityType: "purchase_order",
+      entityId: id,
+      entityLabel: newPoNumber,
+      message: `created Purchase Order ${newPoNumber}`,
+    });
   }
 
   redirect(`/purchase-orders`);

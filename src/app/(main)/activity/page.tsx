@@ -39,12 +39,57 @@ function resolveEntityHref(entityType: string | null, entityId: string | null): 
   }
 }
 
-export default async function ActivityPage() {
-  const { data, error } = await serverSupabase
+export default async function ActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ event_type?: string; user_name?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const eventTypeFilter =
+    typeof resolvedSearchParams.event_type === "string"
+      ? resolvedSearchParams.event_type.trim()
+      : "";
+  const userNameFilter =
+    typeof resolvedSearchParams.user_name === "string"
+      ? resolvedSearchParams.user_name.trim()
+      : "";
+
+  console.log("ACTIVITY_FILTERS", { eventTypeFilter, userNameFilter });
+
+  // Load distinct users that appear in activity logs
+  const { data: distinctUserRows, error: distinctUserError } = await serverSupabase
+    .from("activities")
+    .select("user_name")
+    .not("user_name", "is", null)
+    .order("user_name", { ascending: true });
+
+  const distinctUsers = Array.from(
+    new Set(
+      (distinctUserRows || [])
+        .map((row: any) => (row.user_name as string | null) || "")
+        .filter((name: string) => name.trim().length > 0),
+    ),
+  );
+
+  console.log("ACTIVITY_DISTINCT_USERS", { count: distinctUsers.length, users: distinctUsers });
+
+  let query = serverSupabase
     .from("activities")
     .select("id, created_at, user_name, event_type, entity_type, entity_id, entity_label, message")
     .order("created_at", { ascending: false })
     .limit(100);
+
+  if (eventTypeFilter) {
+    query = query.eq("event_type", eventTypeFilter);
+  }
+
+  if (userNameFilter) {
+    query = query.eq("user_name", userNameFilter);
+  }
+
+  console.log("ACTIVITY_QUERY_FILTERS_APPLIED", { eventTypeFilter, userNameFilter });
+
+  const { data, error } = await query;
 
   const rows = (data as ActivityRow[] | null) || [];
 
@@ -54,6 +99,70 @@ export default async function ActivityPage() {
         <h1 className="font-semibold text-lg tracking-tight">Activity</h1>
         <p className="text-muted-foreground text-sm">Recent user activity across the system.</p>
       </div>
+
+      {/* Filters */}
+      <form
+        method="GET"
+        action="/activity"
+        className="flex flex-col gap-2 rounded-md border bg-card px-3 py-2 text-[11px] sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="space-y-1 sm:w-64">
+            <label htmlFor="event_type" className="text-[11px] text-muted-foreground">
+              Event type
+            </label>
+            <select
+              id="event_type"
+              name="event_type"
+              defaultValue={eventTypeFilter}
+              className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">All activity</option>
+              <option value="sales_order_created">Sales order created</option>
+              <option value="sales_order_ready">Sales order ready</option>
+              <option value="purchase_order_created">Purchase order created</option>
+              <option value="container_created">Container created</option>
+              <option value="container_unloaded">Container unloaded</option>
+              <option value="product_created">Product created</option>
+              <option value="user_created">User created</option>
+            </select>
+          </div>
+
+          <div className="space-y-1 sm:w-64">
+            <label htmlFor="user_name" className="text-[11px] text-muted-foreground">
+              User
+            </label>
+            <select
+              id="user_name"
+              name="user_name"
+              defaultValue={userNameFilter}
+              className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">All users</option>
+              {distinctUsers.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 sm:w-40">
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md border px-3 py-1 font-medium text-[11px] hover:bg-muted"
+          >
+            Apply
+          </button>
+          <a
+            href="/activity"
+            className="inline-flex items-center rounded-md border px-3 py-1 font-medium text-[11px] hover:bg-muted"
+          >
+            Clear
+          </a>
+        </div>
+      </form>
 
       {error && (
         <p className="text-destructive text-[11px]">Failed to load activity. Please try again later.</p>

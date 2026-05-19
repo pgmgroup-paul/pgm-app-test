@@ -44,7 +44,7 @@ export async function logActivityClient(params: {
         .maybeSingle();
 
       if (!profileError && profileRow) {
-        profile = profileRow as typeof profile;
+        profile = profileRow as { id: string; email: string | null; full_name: string | null; is_active: boolean };
       }
     } catch {
       // Profile lookup must never throw; fall back to auth user only

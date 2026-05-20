@@ -7,7 +7,7 @@ import { cancelShipment } from "./cancel-shipment";
 
 export const dynamic = "force-dynamic";
 
-type ShipmentStatusFilter = "ready" | "processing" | "shipped" | "all";
+type ShipmentStatusFilter = string;
 
 interface ReadyShipmentRow {
   id: string; // shipment id
@@ -31,7 +31,7 @@ async function loadShipmentsByStatus(statusFilter: ShipmentStatusFilter): Promis
     )
     .order("created_at", { ascending: true });
 
-  if (statusFilter === "ready" || statusFilter === "processing" || statusFilter === "shipped") {
+  if (statusFilter !== "all") {
     query = query.eq("status", statusFilter);
   }
 
@@ -71,10 +71,28 @@ export default async function ReadyShipmentsPage({
 
   const { status } = await searchParams;
 
+  // Load distinct statuses from so_shipments for the Status dropdown
+  const { data: statusRows, error: statusError } = await serverSupabase
+    .from("so_shipments")
+    .select("status")
+    .not("status", "is", null);
+
+  if (statusError) {
+    console.error("Error loading shipment statuses for filter", statusError);
+  }
+
+  const distinctStatuses = Array.from(
+    new Set(
+      (statusRows || [])
+        .map((row: any) => (row.status as string | null) || "")
+        .filter((s: string) => s.trim().length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const allowedStatusFilters = new Set<string>(["all", ...distinctStatuses]);
+
   const statusFilter: ShipmentStatusFilter =
-    status === "ready" || status === "processing" || status === "shipped" || status === "all"
-      ? (status as ShipmentStatusFilter)
-      : "ready";
+    status && allowedStatusFilters.has(status) ? status : "ready";
 
   const shipments = await loadShipmentsByStatus(statusFilter);
 
@@ -85,41 +103,48 @@ export default async function ReadyShipmentsPage({
         <p className="text-muted-foreground text-sm">Sales order shipments by status.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="inline-flex rounded-md border bg-muted p-0.5 text-[11px]">
-        <a
-          href="/sales-shipments?status=ready"
-          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
-            statusFilter === "ready" ? "bg-background text-foreground" : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Ready
-        </a>
-        <a
-          href="/sales-shipments?status=processing"
-          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
-            statusFilter === "processing" ? "bg-background text-foreground" : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Processing
-        </a>
-        <a
-          href="/sales-shipments?status=shipped"
-          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
-            statusFilter === "shipped" ? "bg-background text-foreground" : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          Shipped
-        </a>
-        <a
-          href="/sales-shipments?status=all"
-          className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
-            statusFilter === "all" ? "bg-background text-foreground" : "text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          All
-        </a>
-      </div>
+      {/* Status filter */}
+      <form
+        method="GET"
+        action="/sales-shipments"
+        className="flex flex-col gap-2 rounded-md border bg-card px-3 py-2 text-[11px] sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="space-y-1 sm:w-48">
+            <label htmlFor="status" className="text-[11px] text-muted-foreground">
+              Status
+            </label>
+            <select
+              id="status"
+              name="status"
+              defaultValue={statusFilter}
+              className="w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="all">All</option>
+              {distinctStatuses.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 sm:w-40">
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md border px-3 py-1 font-medium text-[11px] hover:bg-muted"
+          >
+            Apply
+          </button>
+          <a
+            href="/sales-shipments"
+            className="inline-flex items-center rounded-md border px-3 py-1 font-medium text-[11px] hover:bg-muted"
+          >
+            Clear
+          </a>
+        </div>
+      </form>
 
       <div className="space-y-1" />
 

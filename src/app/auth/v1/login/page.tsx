@@ -38,7 +38,7 @@ async function login(formData: FormData) {
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
-  redirect("/dashboard/default");
+  redirect("/dashboard/import");
 }
 
 interface LoginPageProps {

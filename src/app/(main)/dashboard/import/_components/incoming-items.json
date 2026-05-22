@@ -1,0 +1,122 @@
+[
+  {
+    "id": "1",
+    "sku": "PG98778",
+    "sku_var": "Blue",
+    "product_name": "12oz Mug – Blue",
+    "qty_pieces": 4800,
+    "eta": "2026-06-02",
+    "container": "TEMU9283371",
+    "status": "In Transit"
+  },
+  {
+    "id": "2",
+    "sku": "PG98778",
+    "sku_var": "Red",
+    "product_name": "12oz Mug – Red",
+    "qty_pieces": 3600,
+    "eta": "2026-06-02",
+    "container": "TEMU9283371",
+    "status": "In Transit"
+  },
+  {
+    "id": "3",
+    "sku": "PG2223",
+    "sku_var": null,
+    "product_name": "Glass Storage Jar 1L",
+    "qty_pieces": 2400,
+    "eta": "2026-06-05",
+    "container": "MSKU4839201",
+    "status": "Planned"
+  },
+  {
+    "id": "4",
+    "sku": "PG4433",
+    "sku_var": null,
+    "product_name": "Stainless Mixing Bowl Set (3pc)",
+    "qty_pieces": 1800,
+    "eta": "2026-06-03",
+    "container": "TGHU9023814",
+    "status": "Arriving"
+  },
+  {
+    "id": "5",
+    "sku": "PG5550",
+    "sku_var": "10oz",
+    "product_name": "Double Wall Tumbler 10oz",
+    "qty_pieces": 5200,
+    "eta": "2026-06-06",
+    "container": "HLXU8293047",
+    "status": "Planned"
+  },
+  {
+    "id": "6",
+    "sku": "PG5550",
+    "sku_var": "16oz",
+    "product_name": "Double Wall Tumbler 16oz",
+    "qty_pieces": 4000,
+    "eta": "2026-06-06",
+    "container": "HLXU8293047",
+    "status": "Planned"
+  },
+  {
+    "id": "7",
+    "sku": "PG6001",
+    "sku_var": null,
+    "product_name": "Bamboo Cutting Board Large",
+    "qty_pieces": 1500,
+    "eta": "2026-06-01",
+    "container": "TRIU5567382",
+    "status": "Ready"
+  },
+  {
+    "id": "8",
+    "sku": "PG6002",
+    "sku_var": null,
+    "product_name": "Bamboo Cutting Board Small",
+    "qty_pieces": 2100,
+    "eta": "2026-06-01",
+    "container": "TRIU5567382",
+    "status": "Ready"
+  },
+  {
+    "id": "9",
+    "sku": "PG7100",
+    "sku_var": "GREEN",
+    "product_name": "Food Storage Set 5pc – Green Lids",
+    "qty_pieces": 3200,
+    "eta": "2026-06-04",
+    "container": "APZU4392018",
+    "status": "In Transit"
+  },
+  {
+    "id": "10",
+    "sku": "PG7100",
+    "sku_var": "GRAY",
+    "product_name": "Food Storage Set 5pc – Gray Lids",
+    "qty_pieces": 3200,
+    "eta": "2026-06-04",
+    "container": "APZU4392018",
+    "status": "In Transit"
+  },
+  {
+    "id": "11",
+    "sku": "PG8200",
+    "sku_var": null,
+    "product_name": "Nonstick Fry Pan 10in",
+    "qty_pieces": 1400,
+    "eta": "2026-06-10",
+    "container": "FESU7382910",
+    "status": "Planned"
+  },
+  {
+    "id": "12",
+    "sku": "PG9001",
+    "sku_var": null,
+    "product_name": "Ceramic Dinner Plate",
+    "qty_pieces": 6000,
+    "eta": "2026-06-08",
+    "container": "CMAU7738290",
+    "status": "Arriving"
+  }
+]

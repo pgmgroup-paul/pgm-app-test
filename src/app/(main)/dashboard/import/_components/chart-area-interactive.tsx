@@ -268,9 +268,6 @@ export function ChartAreaInteractive() {
                       year: "numeric",
                     });
                   }}
-                  valueFormatter={(value) =>
-                    typeof value === "number" ? value.toLocaleString("en-US") : String(value ?? "")
-                  }
                   indicator="dot"
                 />
               }

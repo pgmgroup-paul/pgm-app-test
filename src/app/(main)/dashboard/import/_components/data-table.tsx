@@ -27,13 +27,13 @@ export function DataTable({
   containers: z.infer<typeof incomingContainerSchema>[];
   items: z.infer<typeof incomingItemSchema>[];
 }) {
-  const containerTable = useDataTableInstance<IncomingContainer>({
+  const containerTable = useDataTableInstance<IncomingContainer, unknown>({
     data: containers,
     columns: incomingContainerColumns,
     getRowId: (row) => row.id,
   });
 
-  const itemTable = useDataTableInstance<IncomingItem>({
+  const itemTable = useDataTableInstance<IncomingItem, unknown>({
     data: items,
     columns: incomingItemColumns,
     getRowId: (row) => row.id,

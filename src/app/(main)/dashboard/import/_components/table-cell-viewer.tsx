@@ -49,13 +49,15 @@ export function TableCellViewer({ item }: { item: z.infer<typeof incomingItemSch
     <Drawer direction={isMobile ? "bottom" : "right"}>
       <DrawerTrigger asChild>
         <Button variant="link" className="w-fit px-0 text-left text-foreground">
-          {item.header}
+          {item.sku || item.product_name || item.container}
         </Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader className="gap-1">
-          <DrawerTitle>{item.header}</DrawerTitle>
-          <DrawerDescription>Inbound container details for the last 6 months</DrawerDescription>
+          <DrawerTitle>{item.sku || item.product_name || item.container}</DrawerTitle>
+          <DrawerDescription>
+            Inbound item details for container {item.container} (status: {item.status || ""})
+          </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
           {!isMobile && (
@@ -110,65 +112,30 @@ export function TableCellViewer({ item }: { item: z.infer<typeof incomingItemSch
               <Separator />
             </>
           )}
-          <form className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="header">Shipment / container</Label>
-              <Input id="header" defaultValue={item.header} />
+          <div className="flex flex-col gap-3">
+            <div>
+              <Label>SKU</Label>
+              <div className="font-mono text-sm">{item.sku || "—"}</div>
+            </div>
+            <div>
+              <Label>Product</Label>
+              <div className="text-sm">{item.product_name || "—"}</div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="type">Record type</Label>
-                <Select defaultValue={item.type}>
-                  <SelectTrigger id="type" className="w-full">
-                    <SelectValue placeholder="Select a type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Inbound container">Inbound container</SelectItem>
-                    <SelectItem value="Container leg">Container leg</SelectItem>
-                    <SelectItem value="Purchase order">Purchase order</SelectItem>
-                    <SelectItem value="SKU group">SKU group</SelectItem>
-                    <SelectItem value="Exception">Exception</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div>
+                <Label>Container</Label>
+                <div className="text-sm">{item.container}</div>
               </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="status">Status</Label>
-                <Select defaultValue={item.status}>
-                  <SelectTrigger id="status" className="w-full">
-                    <SelectValue placeholder="Select a status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Planned">Planned</SelectItem>
-                    <SelectItem value="In Transit">In Transit</SelectItem>
-                    <SelectItem value="Arrived">Arrived</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div>
+                <Label>ETA</Label>
+                <div className="text-sm">{item.eta || "—"}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
-                <Input id="target" defaultValue={item.target} />
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
-                <Input id="limit" defaultValue={item.limit} />
-              </div>
+            <div>
+              <Label>Quantity (pieces)</Label>
+              <div className="text-sm">{item.qty_pieces.toLocaleString()}</div>
             </div>
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="reviewer">Reviewer</Label>
-              <Select defaultValue={item.reviewer}>
-                <SelectTrigger id="reviewer" className="w-full">
-                  <SelectValue placeholder="Select an owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Eddie Lake">Inbound planner</SelectItem>
-                  <SelectItem value="Jamik Tashpulatov">Logistics manager</SelectItem>
-                  <SelectItem value="Emily Whalen">Warehouse lead</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </form>
+          </div>
         </div>
         <DrawerFooter>
           <Button>Submit</Button>

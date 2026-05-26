@@ -1,6 +1,5 @@
 import { TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -19,8 +18,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-import type { sectionSchema } from "./schema";
 
 const chartData = [
   { month: "January", desktop: 186, mobile: 80 },
@@ -42,7 +39,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function TableCellViewer({ item }: { item: z.infer<typeof sectionSchema> }) {
+export function TableCellViewer({ item }: { item: any }) {
   const isMobile = useIsMobile();
 
   return (

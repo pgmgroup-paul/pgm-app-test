@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "shipment": "CMAU1234567",
+    "order": "SO-100245",
+    "customer": "Acme Retail East DC",
+    "ship_date": "2026-05-20"
+  },
+  {
+    "id": 2,
+    "shipment": "MSCU7654321",
+    "order": "SO-100246",
+    "customer": "BlueSky Home Goods",
+    "ship_date": "2026-05-20"
+  },
+  {
+    "id": 3,
+    "shipment": "TGHU9988776",
+    "order": "SO-100247",
+    "customer": "NorthPoint Wholesale",
+    "ship_date": "2026-05-21"
+  },
+  {
+    "id": 4,
+    "shipment": "SZLU5544332",
+    "order": "SO-100248",
+    "customer": "Metro Supermarkets",
+    "ship_date": "2026-05-21"
+  },
+  {
+    "id": 5,
+    "shipment": "TEMU4433221",
+    "order": "SO-100249",
+    "customer": "Coastal Outfitters",
+    "ship_date": "2026-05-22"
+  },
+  {
+    "id": 6,
+    "shipment": "CMAU2223334",
+    "order": "SO-100250",
+    "customer": "Summit Electronics",
+    "ship_date": "2026-05-22"
+  },
+  {
+    "id": 7,
+    "shipment": "MSCU1100223",
+    "order": "SO-100251",
+    "customer": "GreenGarden Supply",
+    "ship_date": "2026-05-23"
+  },
+  {
+    "id": 8,
+    "shipment": "OOLU6677889",
+    "order": "SO-100252",
+    "customer": "Harbor Tools & Hardware",
+    "ship_date": "2026-05-23"
+  }
+]

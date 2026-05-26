@@ -166,6 +166,11 @@ export const sidebarItems: NavGroup[] = [
     label: "Warehouse",
     items: [
       {
+        title: "Dashboard",
+        url: "/dashboard/warehouse",
+        icon: LayoutDashboard,
+      },
+      {
         title: "Inbound",
         url: "/warehouse/add",
         icon: Package,
